@@ -15,17 +15,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: landing.php");
         exit();
     } else {
-        echo "<p>Login failed: " . $response['message'] . "</p>";
+        $error_message = "Login failed: " . $response['message'];
     }
 }
 ?>
 
-<link rel="stylesheet" href="css/style.css">
-<div class="container">
-  <h2>Login</h2>
-  <form method="POST">
-    <input type="text" name="username" placeholder="Username or Email" required />
-    <input type="password" name="password" placeholder="Password" required />
-    <button type="submit">Login</button>
-  </form>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Your Application</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/login.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h2>Welcome Back</h2>
+            <p>Please enter your credentials to login</p>
+        </div>
+        
+        <?php if (isset($error_message)): ?>
+            <div class="error-message">
+                <?php echo htmlspecialchars($error_message); ?>
+            </div>
+        <?php endif; ?>
+        
+        <form class="login-form" method="POST">
+            <div class="form-group">
+                <label for="username">Username or Email</label>
+                <input type="text" id="username" name="username" placeholder="Enter your username or email" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+            </div>
+            
+            <button type="submit">Login</button>
+        </form>
+        
+        <div class="login-footer">
+            Don't have an account? <a href="register.php">Sign up</a><br>
+            <a href="forgot-password.php">Forgot password?</a>
+        </div>
+    </div>
+</body>
+</html>
