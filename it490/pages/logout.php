@@ -1,5 +1,7 @@
 <?php
 include_once __DIR__ . '/../auth.php';
+// Start session before attempting to destroy it
+startSecureSession();
 
 // Check if logout is confirmed
 if (isset($_GET['confirmed']) && $_GET['confirmed'] === 'true') {

@@ -1,5 +1,7 @@
 <?php
 include_once __DIR__ . '/../auth.php';
+// Ensure the session is started before handling login
+startSecureSession();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     include_once __DIR__ . '/../includes/mq_client.php';
