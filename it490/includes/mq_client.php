@@ -49,7 +49,7 @@ function sendMessage(array $payload): array {
 /**
  * Handles login payload
  */
-private function handleLogin(array $payload): array {
+function handleLogin(array $payload): array {
     // Validate required fields
     if (empty($payload['username']) || empty($payload['password'])) {
         throw new InvalidArgumentException('Username and password are required');
@@ -80,7 +80,7 @@ private function handleLogin(array $payload): array {
 /**
  * Handles registration payload
  */
-private function handleRegistration(array $payload): array {
+function handleRegistration(array $payload): array {
     // Validate required fields
     $required = ['username', 'email', 'password'];
     foreach ($required as $field) {
@@ -111,7 +111,7 @@ private function handleRegistration(array $payload): array {
 /**
  * Handles password reset payload
  */
-private function handlePasswordReset(array $payload): array {
+function handlePasswordReset(array $payload): array {
     // Implementation would go here
     return [
         'status' => 'error',
@@ -123,7 +123,7 @@ private function handlePasswordReset(array $payload): array {
 /**
  * Handles profile update payload
  */
-private function handleProfileUpdate(array $payload): array {
+function handleProfileUpdate(array $payload): array {
     $required = ['user_id', 'username', 'email'];
     foreach ($required as $field) {
         if (empty($payload[$field])) {
