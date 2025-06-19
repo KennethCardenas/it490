@@ -1,5 +1,5 @@
 <?php
-include_once("auth.php");
+include_once __DIR__ . '/../auth.php';
 
 // Check if logout is confirmed
 if (isset($_GET['confirmed']) && $_GET['confirmed'] === 'true') {
@@ -24,9 +24,10 @@ if (isset($_GET['confirmed']) && $_GET['confirmed'] === 'true') {
     <title>Logout | Your App Name</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
+    <?php include_once __DIR__ . '/../navbar.php'; ?>
     <div class="logout-container">
         <div class="logout-card">
             <div class="logout-icon">

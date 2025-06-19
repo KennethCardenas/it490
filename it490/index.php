@@ -17,13 +17,13 @@ try {
         session_regenerate_id(true);
         
         // Redirect to landing page
-        header("Location: landing.php");
+        header("Location: pages/landing.php");
         exit();
     } else {
         // Redirect to login with optional return URL
         $returnUrl = isset($_SERVER['REQUEST_URI']) ? 
             '?return=' . urlencode($_SERVER['REQUEST_URI']) : '';
-        header("Location: login.php" . $returnUrl);
+        header("Location: pages/login.php" . $returnUrl);
         exit();
     }
 } catch (Exception $e) {
