@@ -25,12 +25,15 @@ function sendMessage(array $payload): array {
         switch ($payload['type']) {
             case 'login':
                 return handleLogin($payload);
-                
+
             case 'register':
                 return handleRegistration($payload);
-                
+
             case 'password_reset':
                 return handlePasswordReset($payload);
+
+            case 'update_profile':
+                return handleProfileUpdate($payload);
                 
             default:
                 $response['message'] = 'Unsupported message type';
@@ -113,6 +116,33 @@ private function handlePasswordReset(array $payload): array {
     return [
         'status' => 'error',
         'message' => 'Password reset not implemented',
+        'timestamp' => time()
+    ];
+}
+
+/**
+ * Handles profile update payload
+ */
+private function handleProfileUpdate(array $payload): array {
+    $required = ['user_id', 'username', 'email'];
+    foreach ($required as $field) {
+        if (empty($payload[$field])) {
+            throw new InvalidArgumentException("$field is required");
+        }
+    }
+
+    if (!filter_var($payload['email'], FILTER_VALIDATE_EMAIL)) {
+        throw new InvalidArgumentException('Invalid email format');
+    }
+
+    // Simulate update success
+    return [
+        'status' => 'success',
+        'user' => [
+            'id' => $payload['user_id'],
+            'username' => $payload['username'],
+            'email' => $payload['email']
+        ],
         'timestamp' => time()
     ];
 }

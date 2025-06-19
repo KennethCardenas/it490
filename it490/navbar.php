@@ -1,16 +1,6 @@
 <?php include_once("auth.php"); ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= isset($pageTitle) ? htmlspecialchars($pageTitle) : 'Your App Name' ?></title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-    <nav class="navbar">
+<?php if (!defined('NAVBAR_INCLUDED')) define('NAVBAR_INCLUDED', true); ?>
+<nav class="navbar">
         <div class="navbar-container">
             <div class="navbar-brand">
                 <a href="landing.php">
@@ -55,16 +45,14 @@
             </div>
         </div>
     </nav>
-    
-    <script>
-        // Mobile menu toggle
-        const mobileMenu = document.getElementById('mobile-menu');
-        const navbarMenu = document.querySelector('.navbar-menu');
-        
-        mobileMenu.addEventListener('click', function() {
-            this.classList.toggle('active');
-            navbarMenu.classList.toggle('active');
-        });
-    </script>
-</body>
-</html>
+
+<script>
+    // Mobile menu toggle
+    const mobileMenu = document.getElementById('mobile-menu');
+    const navbarMenu = document.querySelector('.navbar-menu');
+
+    mobileMenu?.addEventListener('click', function() {
+        this.classList.toggle('active');
+        navbarMenu.classList.toggle('active');
+    });
+</script>
