@@ -1,6 +1,11 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/../vendor/autoload.php'; // Adjust path if needed
+
+use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Message\AMQPMessage;
+
 /**
  * Sends a message to message queue with proper validation and error handling
  * 
@@ -14,135 +19,77 @@ function sendMessage(array $payload): array {
         throw new InvalidArgumentException('Payload must contain a type');
     }
 
-    // Initialize response template
-    $response = [
-        'status' => 'error',
-        'message' => 'Action failed',
-        'timestamp' => time()
-    ];
+    // Validate required fields depending on type (basic example)
+    switch ($payload['type']) {
+        case 'login':
+            if (empty($payload['username']) || empty($payload['password'])) {
+                throw new InvalidArgumentException('Username and password are required');
+            }
+            break;
+        case 'register':
+            $required = ['username', 'email', 'password'];
+            foreach ($required as $field) {
+                if (empty($payload[$field])) {
+                    throw new InvalidArgumentException("$field is required");
+                }
+            }
+            if (!filter_var($payload['email'], FILTER_VALIDATE_EMAIL)) {
+                throw new InvalidArgumentException("Invalid email format");
+            }
+            break;
+        case 'password_reset':
+            // Add validations as needed
+            break;
+        case 'update_profile':
+            $required = ['user_id', 'username', 'email'];
+            foreach ($required as $field) {
+                if (empty($payload[$field])) {
+                    throw new InvalidArgumentException("$field is required");
+                }
+            }
+            if (!filter_var($payload['email'], FILTER_VALIDATE_EMAIL)) {
+                throw new InvalidArgumentException('Invalid email format');
+            }
+            break;
+        default:
+            return [
+                'status' => 'error',
+                'message' => 'Unsupported message type',
+                'timestamp' => time()
+            ];
+    }
 
+    // Try sending message to RabbitMQ
     try {
-        switch ($payload['type']) {
-            case 'login':
-                return handleLogin($payload);
+        $connection = new AMQPStreamConnection('localhost', 5672, 'guest', 'guest');
+        $channel = $connection->channel();
 
-            case 'register':
-                return handleRegistration($payload);
+        // Declare the queue (idempotent)
+        $channel->queue_declare('user_actions_queue', false, false, false, false);
 
-            case 'password_reset':
-                return handlePasswordReset($payload);
+        // Create message with JSON payload
+        $msg = new AMQPMessage(json_encode($payload));
 
-            case 'update_profile':
-                return handleProfileUpdate($payload);
-                
-            default:
-                $response['message'] = 'Unsupported message type';
-                return $response;
-        }
-    } catch (Exception $e) {
-        error_log('Message processing failed: ' . $e->getMessage());
-        $response['message'] = 'Internal server error';
-        return $response;
-    }
-}
+        // Publish message to queue
+        $channel->basic_publish($msg, '', 'user_actions_queue');
 
-/**
- * Handles login payload
- */
-function handleLogin(array $payload): array {
-    // Validate required fields
-    if (empty($payload['username']) || empty($payload['password'])) {
-        throw new InvalidArgumentException('Username and password are required');
-    }
+        // Close connections
+        $channel->close();
+        $connection->close();
 
-    // In production: Connect to RabbitMQ and send $payload
-    // This is simulated response for development:
-    if ($payload['username'] === 'admin' && $payload['password'] === 'secure123') {
         return [
-            'status' => 'success',
-            'user' => [
-                'id' => 1,
-                'username' => 'admin',
-                'email' => 'admin@example.com',
-                'roles' => ['admin']
-            ],
+            'status' => 'sent',
+            'message' => 'Message sent to queue',
+            'timestamp' => time()
+        ];
+    } catch (Exception $e) {
+        error_log('MQ Connection failed: ' . $e->getMessage());
+
+        return [
+            'status' => 'error',
+            'message' => 'Failed to send message: ' . $e->getMessage(),
             'timestamp' => time()
         ];
     }
-
-    return [
-        'status' => 'error',
-        'message' => 'Invalid credentials',
-        'timestamp' => time()
-    ];
 }
 
-/**
- * Handles registration payload
- */
-function handleRegistration(array $payload): array {
-    // Validate required fields
-    $required = ['username', 'email', 'password'];
-    foreach ($required as $field) {
-        if (empty($payload[$field])) {
-            throw new InvalidArgumentException("$field is required");
-        }
-    }
-
-    // Validate email format
-    if (!filter_var($payload['email'], FILTER_VALIDATE_EMAIL)) {
-        throw new InvalidArgumentException("Invalid email format");
-    }
-
-    // In production: Connect to RabbitMQ and send $payload
-    // This is simulated success response for development:
-    return [
-        'status' => 'success',
-        'message' => 'Registration successful',
-        'user' => [
-            'id' => rand(1000, 9999),
-            'username' => $payload['username'],
-            'email' => $payload['email']
-        ],
-        'timestamp' => time()
-    ];
-}
-
-/**
- * Handles password reset payload
- */
-function handlePasswordReset(array $payload): array {
-    // Implementation would go here
-    return [
-        'status' => 'error',
-        'message' => 'Password reset not implemented',
-        'timestamp' => time()
-    ];
-}
-
-/**
- * Handles profile update payload
- */
-function handleProfileUpdate(array $payload): array {
-    $required = ['user_id', 'username', 'email'];
-    foreach ($required as $field) {
-        if (empty($payload[$field])) {
-            throw new InvalidArgumentException("$field is required");
-        }
-    }
-
-    if (!filter_var($payload['email'], FILTER_VALIDATE_EMAIL)) {
-        throw new InvalidArgumentException('Invalid email format');
-    }
-
-    // Simulate update success
-    return [
-        'status' => 'success',
-        'user' => [
-            'id' => $payload['user_id'],
-            'username' => $payload['username'],
-            'email' => $payload['email']
-        ],
-        'timestamp' => time()
-    ];
-}
