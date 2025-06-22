@@ -1,6 +1,11 @@
 <?php
 // Start secure session
 function startSecureSession() {
+    // Check if session is already active
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        return;
+    }
+
     $sessionName = 'SECURE_SESSION';
     $secure = true; // Only send over HTTPS
     $httponly = true; // Prevent JavaScript access
