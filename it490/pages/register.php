@@ -24,10 +24,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register | Your App Name</title>
+    <title>Register | BarkBuddy</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../styles/style.css">
 </head>
 <body>
     <?php include_once __DIR__ . '/../navbar.php'; ?>
@@ -72,9 +72,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="input-with-icon">
                         <i class="fas fa-lock"></i>
                         <input type="password" id="password" name="password" placeholder="Create a password" required>
-                        <i class="fas fa-eye password-toggle" id="togglePassword"></i>
+                    </div>
+                    <label for="password">Confirm Password</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="password" name="password" placeholder="Create a password" required>
                     </div>
                     <div class="password-strength">
+                        <i class="fas fa-eye password-toggle" id="togglePassword"></i>
                         <div class="strength-meter"></div>
                         <span class="strength-text">Password strength</span>
                     </div>

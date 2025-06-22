@@ -38,3 +38,4 @@ function requireAuth(): void {
         exit();
     }
 }
+    
