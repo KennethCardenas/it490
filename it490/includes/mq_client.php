@@ -37,6 +37,11 @@ function sendMessage(array $payload): array {
                 throw new InvalidArgumentException("Invalid email format");
             }
             break;
+             case 'reset_request':
+              if (empty($payload['email']) || !filter_var($payload['email'], FILTER_VALIDATE_EMAIL)) {
+            throw new InvalidArgumentException('Valid email is required');
+        }
+        break;
         case 'password_reset':
             // Add validations as needed
             break;
