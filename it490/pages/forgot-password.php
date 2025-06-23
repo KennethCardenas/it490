@@ -73,7 +73,7 @@ if (isset($_SESSION['message'])) {
     </style>
 </head>
 <body>
-    <?php include 'navbar.php'; ?>
+    <?php include_once __DIR__ . '/../navbar.php'; ?>
 
     <div class="container">
         <h2>Forgot Your Password?</h2>
