@@ -1,19 +1,27 @@
 <?php
 include_once __DIR__ . '/../auth.php';
-// Ensure the session is started before handling login
-startSecureSession();
+
+// Initialize error message
+$error_message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     include_once __DIR__ . '/../includes/mq_client.php';
+    
     $payload = [
         "type" => "login",
         "username" => $_POST['username'],
         "password" => $_POST['password']
     ];
+    
     $response = sendMessage($payload);
+    
     if ($response['status'] === 'success') {
+        startSecureSession();
         $_SESSION['user'] = $response['user'];
-        header("Location: landing.php");
+        
+        // Redirect to return URL or landing page
+        $returnUrl = getReturnUrl();
+        header("Location: $returnUrl");
         exit();
     } else {
         $error_message = "Login failed: " . $response['message'];
@@ -39,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <p>Please enter your credentials to login</p>
         </div>
         
-        <?php if (isset($error_message)): ?>
+        <?php if (!empty($error_message)): ?>
             <div class="error-message">
                 <?php echo htmlspecialchars($error_message); ?>
             </div>
