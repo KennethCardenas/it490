@@ -1,23 +1,17 @@
 <?php
 require_once __DIR__ . '/../vendor/autoload.php';
-<<<<<<< HEAD
-=======
 require_once __DIR__ . '/../api/connect.php';
->>>>>>> 23f59a43818b6a8d753f3882bffc00305cfc2a24
 
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
-<<<<<<< HEAD
 $pdo = new PDO("mysql:host=localhost;dbname=your_db;charset=utf8mb4", "your_user", "your_password");
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-=======
 // Database connection (reuse from connect.php)
 global $conn;
 
 // Password hashing configuration
 define('PASSWORD_BCRYPT_COST', 12);
->>>>>>> 23f59a43818b6a8d753f3882bffc00305cfc2a24
 
 $connection = new AMQPStreamConnection('localhost', 5672, 'guest', 'guest');
 $channel = $connection->channel();
@@ -27,7 +21,6 @@ $channel->queue_declare('response_queue', false, true, false, false);
 
 echo " [*] Waiting for messages. To exit press CTRL+C\n";
 
-<<<<<<< HEAD
 $callback = function ($msg) use ($pdo) {
     $payload = json_decode($msg->body, true);
     echo " [x] Received message of type: " . ($payload['type'] ?? 'unknown') . "\n";
@@ -96,16 +89,13 @@ $callback = function ($msg) use ($pdo) {
             echo " [?] Unknown message type\n";
             $responsePayload['message'] = 'Unsupported action type';
             break;
-=======
 function validateEmailOrUsername($input) {
     if (filter_var($input, FILTER_VALIDATE_EMAIL)) {
         return ['field' => 'email', 'value' => $input];
->>>>>>> 23f59a43818b6a8d753f3882bffc00305cfc2a24
     }
     return ['field' => 'username', 'value' => $input];
 }
 
-<<<<<<< HEAD
     if (!empty($msg->get('reply_to'))) {
         $responseMsg = new AMQPMessage(
             json_encode($responsePayload),
@@ -116,7 +106,6 @@ function validateEmailOrUsername($input) {
 
     //Acknowledge message processed
     $msg->ack();
-=======
 function hashPassword(string $password): string {
     return password_hash($password, PASSWORD_BCRYPT, ['cost' => PASSWORD_BCRYPT_COST]);
 }
@@ -321,7 +310,6 @@ $callback = function ($msg) use ($channel, $conn) {
         error_log("Error processing message: " . $e->getMessage());
         echo " [!] Error: " . $e->getMessage() . "\n";
     }
->>>>>>> 23f59a43818b6a8d753f3882bffc00305cfc2a24
 };
 
 $channel->basic_qos(null, 1, null);
