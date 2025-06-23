@@ -48,7 +48,10 @@
 - Conflict between client-side and server-side validation messages
 
 ### Positive Shoutout to Team Member(s)
-
+- antonio for helping out on the MQ flow and DB testing
+- Jerry for helping create the necessary pages
+- Filipe for styling all the pages and cleaning them up
+- Jhonathan for helping with the MQ files
 
 ### What can be improved individually?
 - More frequent Git commits with better messages
