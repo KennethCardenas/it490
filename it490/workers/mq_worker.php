@@ -58,7 +58,7 @@ function checkDuplicateCredentials($conn, $username, $email, $excludeUserId = nu
     return $errors;
 }
 
-$connection = new AMQPStreamConnection('100.87.203.113', 5672, 'JS2624', 'guest');
+$connection = new AMQPStreamConnection('100.87.203.113', 5672, 'kac63', 'Linklinkm1!');
 $channel = $connection->channel();
 $channel->queue_declare('user_actions_queue', false, true, false, false);
 $channel->queue_declare('response_queue', false, true, false, false);
