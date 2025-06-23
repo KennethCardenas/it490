@@ -50,12 +50,12 @@ try {
     $conn->set_charset("utf8mb4");
 
     // Connection successful
-    echo "✅ Connected successfully to BARKBUDDY database on " . $config['host'];
+    // echo "✅ Connected successfully to BARKBUDDY database on " . $config['host'];
 
     // Example query - replace with your actual queries
     $result = $conn->query("SELECT 1");
     if ($result) {
-        echo "\n🔹 Test query executed successfully";
+        // echo "\n🔹 Test query executed successfully";
         $result->free();
     }
 
@@ -64,10 +64,7 @@ try {
     error_log($e->getMessage());
     die("❌ Database connection error. Please try again later.");
     
-} finally {
-    // Always close connection when done
-    if (isset($conn) && $conn instanceof mysqli) {
-        $conn->close();
-    }
 }
+
+return $conn;
 ?>
