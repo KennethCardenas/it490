@@ -1,11 +1,15 @@
 <?php
-include_once __DIR__ . '/../auth.php';
+require_once __DIR__ . '/../auth.php';
+require_once __DIR__ . '/../includes/mq_client.php';
+
+// Start session and default return path
+startSecureSession();
+$_SESSION['return_url'] = $_GET['return'] ?? '/dashboard.php';
+
+// Initialize error message
 $error_message = '';
 
-// Handle POST request
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    include_once __DIR__ . '/../includes/mq_client.php';
-
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
 
@@ -18,10 +22,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $response = sendMessage($payload);
 
     if (isset($response['status']) && $response['status'] === 'success') {
-        startSecureSession(); // Ensure session is secure
         $_SESSION['user'] = $response['user'];
 
-        // Redirect to intended page or default landing
+        // Redirect to return URL or dashboard
         $returnUrl = getReturnUrl();
         header("Location: $returnUrl");
         exit();
