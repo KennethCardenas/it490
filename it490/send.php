@@ -3,8 +3,8 @@ require_once __DIR__ . '/vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
-// Connect to RabbitMQ on dev-mq VM with username JS2624
-$connection = new AMQPStreamConnection('100.87.203.113', 5672, 'JS2624', 'guest');
+// Connect to RabbitMQ on dev-mq VM with username kac63
+$connection = new AMQPStreamConnection('100.87.203.113', 5672, 'kac63', 'Linklinkm1!');
 $channel = $connection->channel();
 
 // Create a unique callback queue
