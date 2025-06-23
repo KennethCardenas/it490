@@ -19,7 +19,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<<<<<<< HEAD
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -34,11 +33,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php include_once __DIR__ . '/../navbar.php'; ?>
     <div class="register-container">
         <div class="register-card">
-=======
 <?php $title = "Register"; include_once __DIR__ . "/../header.php"; ?>
 <div class="register-container">
     <div class="register-card">
->>>>>>> 8ec3be200e446db56e8061eb275165e9264e0cad
             <div class="register-header">
                 <h2>Create Account</h2>
                 <p>Join our community today</p>
