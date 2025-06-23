@@ -40,7 +40,7 @@ function sendMessage(array $payload): array {
 
     try {
         // Use the same RabbitMQ connection details as send.php
-        $connection = new AMQPStreamConnection('100.87.203.113', 5672, 'JS2624', 'guest');
+$connection = new AMQPStreamConnection('100.87.203.113', 5672, 'kac63', 'Linklinkm1!');
         $channel = $connection->channel();
         $channel->queue_declare('user_actions_queue', false, true, false, false);
         list($callbackQueue,) = $channel->queue_declare('', false, false, true, true);
