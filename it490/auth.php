@@ -10,7 +10,7 @@ function startSecureSession() {
     $secure = true; // Only send over HTTPS
     $httponly = true; // Prevent JavaScript access
     
-    // Force sessions to only use cookies
+    if (session_status() === PHP_SESSION_NONE) {// Force sessions to only use cookies
     ini_set('session.use_only_cookies', 1);
     
     // Set session cookie parameters
@@ -27,6 +27,7 @@ function startSecureSession() {
     session_name($sessionName);
     session_start();
     session_regenerate_id(true); // Regenerate ID to prevent fixation
+ }
 }
 
 // Check if user is authenticated
