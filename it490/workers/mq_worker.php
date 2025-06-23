@@ -61,7 +61,6 @@ function checkDuplicateCredentials($conn, $username, $email, $excludeUserId = nu
 $connection = new AMQPStreamConnection('100.87.203.113', 5672, 'kac63', 'Linklinkm1!');
 $channel = $connection->channel();
 $channel->queue_declare('user_actions_queue', false, true, false, false);
-$channel->queue_declare('response_queue', false, true, false, false);
 
 echo " [*] Waiting for messages. To exit press CTRL+C\n";
 
@@ -193,12 +192,15 @@ $callback = function ($msg) use ($channel, $conn) {
                 break;
         }
 
-        if (isset($payload['correlation_id'])) {
+        $correlationId = $msg->get('correlation_id');
+        $replyTo = $msg->get('reply_to');
+
+        if ($correlationId && $replyTo) {
             $responseMsg = new AMQPMessage(
                 json_encode($response),
-                ['correlation_id' => $payload['correlation_id']]
+                ['correlation_id' => $correlationId]
             );
-            $channel->basic_publish($responseMsg, '', 'response_queue');
+            $channel->basic_publish($responseMsg, '', $replyTo);
         }
 
         $msg->ack();
