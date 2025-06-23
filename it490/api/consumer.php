@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/vendor/autoload.php';
-require __DIR__ . '/api/connect.php'; // make sure the path is correct
+require __DIR__ . '/api/connect.php'; // defines $conn (MySQLi)
 
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
@@ -12,19 +12,22 @@ $channel->queue_declare('user_request_queue', false, false, false, false);
 
 echo "[*] Waiting for messages on 'user_request_queue'. To exit press CTRL+C\n";
 
-$callback = function ($msg) {
+$callback = function ($msg) use ($conn) {
     echo "[x] Received ", $msg->body, "\n";
     $request = json_decode($msg->body, true);
     $userId = intval($request['userId']);
 
-    global $connect;
-    $stmt = $connect->prepare("SELECT * FROM users WHERE id = ?");
-    $stmt->bind_param('i', $userId);
-    $stmt->execute();
-    $result = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
+    $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+    if ($stmt === false) {
+        $response = json_encode(['error' => 'Prepare failed: ' . $conn->error]);
+    } else {
+        $stmt->bind_param('i', $userId);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
 
-    $response = json_encode($result ?: ['error' => 'User not found']);
+        $response = json_encode($result ?: ['error' => 'User not found']);
+    }
 
     $reply = new AMQPMessage(
         $response,
