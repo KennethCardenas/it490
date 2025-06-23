@@ -11,7 +11,7 @@ $config = [
     'username'  => 'BARKBUDDYUSER', // Custom database user
     'password'  => 'Linklinkm1!',   // Strong password
     'database'  => 'BARKBUDDY',     // Database name
-    'ssl'       => true,            // Enable SSL for secure connection
+    'ssl'       => false,           // Disable SSL to avoid verification issues
     'timeout'   => 5                // Connection timeout in seconds
 ];
 
@@ -22,45 +22,43 @@ ini_set('display_errors', 1);
 try {
     // Initialize MySQLi object
     $conn = mysqli_init();
-    
+
     // Set connection timeout
     $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, $config['timeout']);
-    
-    // Configure SSL if enabled
+
+    // Optional: disable SSL cert verification if SSL was previously enabled
+    // If using real_connect with flags, you can skip this section entirely when ssl is false
     if ($config['ssl']) {
-        $conn->ssl_set(
-            null,   // Key file (not needed for server auth)
-            null,   // Certificate file
-            '/etc/ssl/certs/ca-certificates.crt', // CA certificate
-            null,   // CA path
-            null    // Cipher
-        );
+        $conn->ssl_set(null, null, null, null, null);
+        $conn->options(MYSQLI_OPT_SSL_VERIFY_SERVER_CERT, false);
     }
-    
+
     // Establish the connection
     if (!$conn->real_connect(
         $config['host'],
         $config['username'],
         $config['password'],
         $config['database'],
-        $config['port']
+        $config['port'],
+        null,
+        $config['ssl'] ? MYSQLI_CLIENT_SSL_DONT_VERIFY_SERVER_CERT : 0
     )) {
         throw new Exception("MySQL connection failed: " . $conn->connect_error);
     }
-    
+
     // Set charset to utf8mb4 for full Unicode support
     $conn->set_charset("utf8mb4");
-    
+
     // Connection successful
     echo "✅ Connected successfully to BARKBUDDY database on " . $config['host'];
-    
+
     // Example query - replace with your actual queries
     $result = $conn->query("SELECT 1");
     if ($result) {
         echo "\n🔹 Test query executed successfully";
         $result->free();
     }
-    
+
 } catch (Exception $e) {
     // Log error securely (in production, log to file instead of displaying)
     error_log($e->getMessage());
@@ -72,7 +70,4 @@ try {
         $conn->close();
     }
 }
-
-// Your application code would go here...
-
 ?>
