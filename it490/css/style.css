@@ -34,3 +34,16 @@ button {
   margin-right: 10px;
   text-decoration: none;
 }
+.navbar {
+  display: flex;
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  .container {
+    width: 90%;
+    margin: 20px auto;
+  }
+  .navbar {
+    flex-direction: column;
+  }
+}

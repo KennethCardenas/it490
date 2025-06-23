@@ -29,20 +29,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | Your App Name</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../css/style.css">
-</head>
-<body>
-    <?php include_once __DIR__ . '/../navbar.php'; ?>
-    <div class="login-container">
+<?php $title = "Login"; include_once __DIR__ . "/../header.php"; ?>
         <div class="login-header">
+<div class="login-container">
             <h2>Welcome Back</h2>
             <p>Please enter your credentials to login</p>
         </div>
@@ -71,6 +60,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             Don't have an account? <a href="register.php">Sign up</a><br>
             <a href="forgot-password.php">Forgot password?</a>
         </div>
+<script>
+const loginForm = document.querySelector(".login-form");
+loginForm.addEventListener("submit", function(e){
+  if(document.getElementById("username").value.trim()==="" || document.getElementById("password").value.trim()===""){
+    alert("All fields are required");
+    e.preventDefault();
+  }
+});
+</script>
     </div>
-</body>
-</html>
+<?php include_once __DIR__ . "/../footer.php"; ?>

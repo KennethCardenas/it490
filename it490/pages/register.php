@@ -19,20 +19,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register | Your App Name</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../css/style.css">
-</head>
-<body>
-    <?php include_once __DIR__ . '/../navbar.php'; ?>
-    <div class="register-container">
-        <div class="register-card">
+<?php $title = "Register"; include_once __DIR__ . "/../header.php"; ?>
+<div class="register-container">
+    <div class="register-card">
             <div class="register-header">
                 <h2>Create Account</h2>
                 <p>Join our community today</p>
@@ -90,6 +79,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script>
+        const form = document.querySelector(".register-form");
+        form.addEventListener("submit", function(e) {
+            const emailField = document.getElementById("email");
+            if (!emailField.value.includes("@")) {
+                alert("Please enter a valid email address");
+                e.preventDefault();
+            }
+        });
         // Password toggle functionality
         const togglePassword = document.querySelector('#togglePassword');
         const password = document.querySelector('#password');
@@ -127,5 +124,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             strengthText.textContent = strengthMessages[strength] || 'Password strength';
         });
     </script>
-</body>
-</html>
+<?php include_once __DIR__ . "/../footer.php"; ?>
