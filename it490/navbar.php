@@ -1,14 +1,6 @@
 <?php include_once("auth.php"); ?>
 <?php if (!defined('NAVBAR_INCLUDED')) define('NAVBAR_INCLUDED', true); ?>
 <nav class="navbar">
-        <div class="navbar-container">
-            <div class="navbar-brand">
-                <a href="landing.php">
-                    <i class="fas fa-rocket"></i>
-                    <span>MyApp</span>
-                </a>
-            </div>
-            
             <div class="navbar-toggle" id="mobile-menu">
                 <span class="bar"></span>
                 <span class="bar"></span>
