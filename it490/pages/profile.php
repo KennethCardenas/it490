@@ -24,18 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile | <?= htmlspecialchars($user['username']) ?></title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../css/style.css">
-</head>
-<body>
-    <?php include_once __DIR__ . '/../navbar.php'; ?>
+<?php $title = "Profile"; include_once __DIR__ . "/../header.php"; ?>
     <div class="profile-container">
         <div class="profile-header">
             <div class="profile-avatar">
@@ -81,6 +70,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script>
+        const profileForm = document.querySelector("form");
+        profileForm.addEventListener("submit", function(e){
+            const emailField = document.getElementById("email");
+            if(!emailField.value.includes("@")) {
+                alert("Enter a valid email address");
+                e.preventDefault();
+            }
+        });
         // Password toggle functionality
         const togglePassword = document.querySelector('#togglePassword');
         const password = document.querySelector('#password');
@@ -92,5 +89,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             this.classList.toggle('fa-eye');
         });
     </script>
-</body>
-</html>
+<?php include_once __DIR__ . "/../footer.php"; ?>
