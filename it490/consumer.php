@@ -5,7 +5,7 @@ require __DIR__ . '/api/connect.php'; // defines $conn (MySQLi)
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
-$connection = new AMQPStreamConnection('100.87.203.113', 5672, 'JS2624', 'guest');
+$connection = new AMQPStreamConnection('100.87.203.113', 5672, 'kac63', 'Linklinkm1!');
 $channel = $connection->channel();
 
 $channel->queue_declare('user_request_queue', false, false, false, false);
