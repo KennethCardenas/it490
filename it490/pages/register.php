@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         "password" => $_POST['password']
     ];
     $response = sendMessage($payload);
-    
+
     if ($response['status'] === 'success') {
         $success_message = "Registration successful! You can now login.";
     } else {
@@ -19,6 +19,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register | Your App Name</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../styles/style.css">
+</head>
+<body>
+    <?php include_once __DIR__ . '/../navbar.php'; ?>
+    <div class="register-container">
+        <div class="register-card">
+            
 <?php $title = "Register"; include_once __DIR__ . "/../header.php"; ?>
 <div class="register-container">
     <div class="register-card">
