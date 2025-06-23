@@ -4,9 +4,8 @@ require_once __DIR__ . '/../includes/mq_client.php';
 
 startSecureSession();
 
-// Set return URL if not already set
 if (!isset($_SESSION['return_url'])) {
-    $_SESSION['return_url'] = $_GET['return'] ?? '/pages/profile.php';
+    $_SESSION['return_url'] = $_GET['return'] ?? '/pages/dashboard.php';
 }
 
 $error_message = '';
@@ -25,10 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (isset($response['status']) && $response['status'] === 'success') {
         $_SESSION['user'] = $response['user'];
-
-        // Redirect to saved return URL or profile
-        $returnUrl = getReturnUrl();
-        header("Location: $returnUrl");
+        header("Location: " . getReturnUrl());
         exit();
     } else {
         $error_message = "Login failed: " . htmlspecialchars($response['message'] ?? 'Unknown error');
@@ -74,14 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
 
         <div class="login-footer">
-            <div id="noAccount">
-                <p>Don't have an account?</p>
-                <a href="register.php">Sign up</a><br>
-            </div>
-            <div id="forgotPasswordWrapper">
-                <p>Forgot Password?</p>
-                <a href="forgot-password.php">Reset</a>
-            </div>
+            <p>Don't have an account? <a href="register.php">Sign up</a></p>
+            <p>Forgot Password? <a href="forgot-password.php">Reset</a></p>
         </div>
     </div>
     <img src="../images/dogsilhouette.png" alt="dog silhouette" id="dog1">
