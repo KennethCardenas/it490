@@ -19,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
+<<<<<<< HEAD
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -33,6 +34,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php include_once __DIR__ . '/../navbar.php'; ?>
     <div class="register-container">
         <div class="register-card">
+=======
+<?php $title = "Register"; include_once __DIR__ . "/../header.php"; ?>
+<div class="register-container">
+    <div class="register-card">
+>>>>>>> 8ec3be200e446db56e8061eb275165e9264e0cad
             <div class="register-header">
                 <h2>Create Account</h2>
                 <p>Join our community today</p>
@@ -93,6 +99,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <img src="../images/dog4.png" alt="dog silhouette" id="dog4">
 
     <script>
+        const form = document.querySelector(".register-form");
+        form.addEventListener("submit", function(e) {
+            const emailField = document.getElementById("email");
+            if (!emailField.value.includes("@")) {
+                alert("Please enter a valid email address");
+                e.preventDefault();
+            }
+        });
         // Password toggle functionality
         const togglePassword = document.querySelector('#togglePassword');
         const password = document.querySelector('#password');
@@ -130,5 +144,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             strengthText.textContent = strengthMessages[strength] || 'Password strength';
         });
     </script>
-</body>
-</html>
+<?php include_once __DIR__ . "/../footer.php"; ?>

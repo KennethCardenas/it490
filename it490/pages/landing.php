@@ -5,18 +5,7 @@ requireAuth();
 $user = $_SESSION['user'];
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard | <?= htmlspecialchars($user['username']) ?></title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../css/style.css">
-</head>
-<body>
-    <?php include_once __DIR__ . '/../navbar.php'; ?>
+<?php $title = "Dashboard"; include_once __DIR__ . "/../header.php"; ?>
     <div class="dashboard-container">
         <div class="welcome-card">
             <div class="welcome-header">
@@ -53,5 +42,4 @@ $user = $_SESSION['user'];
             </div>
         </div>
     </div>
-</body>
-</html>
+<?php include_once __DIR__ . "/../footer.php"; ?>
