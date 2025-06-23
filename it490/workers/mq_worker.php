@@ -1,4 +1,4 @@
-<?php
+<?php 
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../api/connect.php';
 
@@ -58,12 +58,19 @@ function checkDuplicateCredentials($conn, $username, $email, $excludeUserId = nu
     return $errors;
 }
 
-$connection = new AMQPStreamConnection('100.87.203.113', 5672, 'JS2624', 'guest');
-$channel = $connection->channel();
-$channel->queue_declare('user_actions_queue', false, true, false, false);
-$channel->queue_declare('response_queue', false, true, false, false);
+try {
+    $connection = new AMQPStreamConnection('100.87.203.113', 5672, 'kac63', 'Linklinkm1!');
+    echo " [*] Connected to RabbitMQ at 100.87.203.113\n";
+} catch (Exception $e) {
+    echo " [!] Failed to connect to RabbitMQ: " . $e->getMessage() . "\n";
+    exit(1);
+}
 
-echo " [*] Waiting for messages. To exit press CTRL+C\\n";
+$channel = $connection->channel();
+$channel->queue_declare('user_request_queue', false, false, false, false);
+$channel->queue_declare('response_queue', false, false, false, false);
+
+echo " [*] Waiting for messages on 'user_request_queue'. To exit press CTRL+C\n";
 
 $callback = function ($msg) use ($channel, $conn) {
     try {
@@ -211,7 +218,7 @@ $callback = function ($msg) use ($channel, $conn) {
 };
 
 $channel->basic_qos(null, 1, null);
-$channel->basic_consume('user_actions_queue', '', false, false, false, false, $callback);
+$channel->basic_consume('user_request_queue', '', false, false, false, false, $callback);
 
 try {
     while ($channel->is_consuming()) {

@@ -7,7 +7,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['email'])) {
 
     // Build MQ payload
     $payload = [
-        "type" => "reset_request",
+        "type" => "password_reset",
         "email" => $email
     ];
 
@@ -15,7 +15,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['email'])) {
     $response = sendMessage($payload);
 
     // Set session message based on response
-    $_SESSION['message'] = $response['status'] === 'sent'
+    $_SESSION['message'] = $response['status'] === 'success'
         ? "If this email is registered, a reset link was sent to $email."
         : "Error: " . $response['message'];
 
