@@ -1,10 +1,10 @@
 <?php
 
-// Start secure session with proper cookie handling
+/**
+ * Starts a secure PHP session with proper cookie parameters.
+ */
 function startSecureSession() {
-    if (session_status() === PHP_SESSION_ACTIVE) {
-        return;
-    }
+    if (session_status() === PHP_SESSION_ACTIVE) return;
 
     $sessionName = 'SECURE_SESSION';
     $secure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
@@ -13,7 +13,6 @@ function startSecureSession() {
     if (session_status() === PHP_SESSION_NONE) {
         ini_set('session.use_only_cookies', 1);
 
-        // Set cookie params securely
         $cookieParams = session_get_cookie_params();
         session_set_cookie_params([
             'lifetime' => $cookieParams["lifetime"],
@@ -26,24 +25,28 @@ function startSecureSession() {
 
         session_name($sessionName);
         session_start();
-        session_regenerate_id(true); // Mitigate session fixation
+        session_regenerate_id(true); // Prevent session fixation
     }
 }
 
-// Check if a user is logged in
+/**
+ * Checks whether a user is authenticated based on session data.
+ */
 function isAuthenticated(): bool {
     startSecureSession();
     return isset($_SESSION['user']) && !empty($_SESSION['user']['id']);
 }
 
-// Require login; redirect to login with return path if not authenticated
+/**
+ * Requires authentication to view a page.
+ * If not authenticated, saves the intended page and redirects to login.
+ */
 function requireAuth(): void {
     startSecureSession();
 
     if (!isAuthenticated()) {
-        $returnUrl = $_SERVER['REQUEST_URI'] ?? '/dashboard.php';
+        $returnUrl = $_SERVER['REQUEST_URI'] ?? '/pages/profile.php';
 
-        // Avoid redirect loop
         if (!str_contains($returnUrl, 'login.php')) {
             $_SESSION['return_url'] = $returnUrl;
         }
@@ -53,10 +56,13 @@ function requireAuth(): void {
     }
 }
 
-// Get and clear return URL or fallback to dashboard
+/**
+ * Retrieves the saved return URL or defaults to profile page.
+ * Also unsets the session variable to prevent reuse.
+ */
 function getReturnUrl(): string {
     startSecureSession();
-    $url = $_SESSION['return_url'] ?? '/dashboard.php';
+    $url = $_SESSION['return_url'] ?? '/pages/profile.php';
     unset($_SESSION['return_url']);
     return $url;
 }
