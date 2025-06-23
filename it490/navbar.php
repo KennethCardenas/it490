@@ -1,7 +1,6 @@
 <?php include_once("auth.php"); ?>
 <?php if (!defined('NAVBAR_INCLUDED')) define('NAVBAR_INCLUDED', true); ?>
 <nav class="navbar">
-            
             <div class="navbar-toggle" id="mobile-menu">
                 <span class="bar"></span>
                 <span class="bar"></span>

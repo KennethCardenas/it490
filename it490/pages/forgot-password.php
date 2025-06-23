@@ -13,12 +13,16 @@ if (isset($_SESSION['message'])) {
 <head>
     <meta charset="UTF-8">
     <title>Forgot Password</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
             font-family: Arial, sans-serif;
             background-color: #f4f4f4;
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            background-image: url("../images/forgotpassbackground.jpg");
+            background-size: 100%;
         }
 
         .container {
@@ -69,6 +73,19 @@ if (isset($_SESSION['message'])) {
             text-align: center;
             color: green;
             margin-top: 10px;
+        }
+
+        .navbar {
+            background: #333;
+            color: white;
+            padding: 10px;
+            margin: 
+        }
+
+        .navbar a {
+            color: white;
+            margin-right: 10px;
+            text-decoration: none;
         }
     </style>
 </head>
