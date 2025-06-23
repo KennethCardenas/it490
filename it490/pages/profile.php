@@ -71,13 +71,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <script>
         const profileForm = document.querySelector("form");
-        profileForm.addEventListener("submit", function(e){
-            const emailField = document.getElementById("email");
-            if(!emailField.value.includes("@")) {
-                alert("Enter a valid email address");
-                e.preventDefault();
-            }
-        });
+profileForm.addEventListener("submit", function(e) {
+    const username = document.getElementById("username").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const passwordValue = document.getElementById("password").value;
+
+    if (username.length < 4 || /\s/.test(username)) {
+        alert("Username must be at least 4 characters and contain no spaces.");
+        e.preventDefault();
+        return;
+    }
+
+    if (!email.includes("@")) {
+        alert("Enter a valid email address.");
+        e.preventDefault();
+        return;
+    }
+
+    if (passwordValue !== "") {
+        if (
+            passwordValue.length < 8 ||
+            !/[A-Z]/.test(passwordValue) ||
+            !/[0-9]/.test(passwordValue) ||
+            !/[^A-Za-z0-9]/.test(passwordValue)
+        ) {
+            alert("If changing password, it must be at least 8 characters and include a number, uppercase letter, and special character.");
+            e.preventDefault();
+            return;
+        }
+
+        const commonPasswords = ["password", "123456", "qwerty"];
+        if (commonPasswords.includes(passwordValue.toLowerCase())) {
+            alert("Password is too common. Please choose a stronger one.");
+            e.preventDefault();
+            return;
+        }
+    }
+});
         // Password toggle functionality
         const togglePassword = document.querySelector('#togglePassword');
         const password = document.querySelector('#password');
