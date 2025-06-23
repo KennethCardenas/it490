@@ -2,8 +2,8 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../api/connect.php';
 
-use PhpAmqpLib\\Connection\\AMQPStreamConnection;
-use PhpAmqpLib\\Message\\AMQPMessage;
+use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Message\AMQPMessage;
 
 define('PASSWORD_BCRYPT_COST', 12);
 
@@ -63,14 +63,14 @@ $channel = $connection->channel();
 $channel->queue_declare('user_actions_queue', false, true, false, false);
 $channel->queue_declare('response_queue', false, true, false, false);
 
-echo " [*] Waiting for messages. To exit press CTRL+C\\n";
+echo " [*] Waiting for messages. To exit press CTRL+C\n";
 
 $callback = function ($msg) use ($channel, $conn) {
     try {
         $payload = json_decode($msg->body, true);
         $response = ['status' => 'error', 'message' => 'Unknown action'];
         
-        echo " [x] Processing: " . ($payload['type'] ?? 'unknown') . "\\n";
+        echo " [x] Processing: " . ($payload['type'] ?? 'unknown') . "\n";
 
         switch ($payload['type'] ?? '') {
             case 'login':
@@ -92,14 +92,14 @@ $callback = function ($msg) use ($channel, $conn) {
                                 'email' => $user['email']
                             ]
                         ];
-                        echo " [+] Login success for user: {$user['username']}\\n";
+                        echo " [+] Login success for user: {$user['username']}\n";
                     } else {
                         $response['message'] = "Invalid credentials";
-                        echo " [-] Login failed (bad password)\\n";
+                        echo " [-] Login failed (bad password)\n";
                     }
                 } else {
                     $response['message'] = "User not found";
-                    echo " [-] Login failed (user not found)\\n";
+                    echo " [-] Login failed (user not found)\n";
                 }
                 break;
 
@@ -107,7 +107,7 @@ $callback = function ($msg) use ($channel, $conn) {
                 $duplicateErrors = checkDuplicateCredentials($conn, $payload['username'], $payload['email']);
                 if (!empty($duplicateErrors)) {
                     $response['message'] = implode(", ", $duplicateErrors);
-                    echo " [-] Registration failed: " . $response['message'] . "\\n";
+                    echo " [-] Registration failed: " . $response['message'] . "\n";
                     break;
                 }
 
@@ -127,10 +127,10 @@ $callback = function ($msg) use ($channel, $conn) {
                             'email' => $payload['email']
                         ]
                     ];
-                    echo " [+] Registered user: {$payload['username']}\\n";
+                    echo " [+] Registered user: {$payload['username']}\n";
                 } else {
                     $response['message'] = "Database error: " . $conn->error;
-                    echo " [-] Registration failed: " . $response['message'] . "\\n";
+                    echo " [-] Registration failed: " . $response['message'] . "\n";
                 }
                 break;
 
@@ -143,7 +143,7 @@ $callback = function ($msg) use ($channel, $conn) {
                 $duplicateErrors = checkDuplicateCredentials($conn, $payload['username'], $payload['email'], $payload['user_id']);
                 if (!empty($duplicateErrors)) {
                     $response['message'] = implode(", ", $duplicateErrors);
-                    echo " [-] Profile update failed: " . $response['message'] . "\\n";
+                    echo " [-] Profile update failed: " . $response['message'] . "\n";
                     break;
                 }
 
@@ -175,21 +175,21 @@ $callback = function ($msg) use ($channel, $conn) {
                             'email' => $payload['email']
                         ]
                     ];
-                    echo " [+] Updated profile for user ID: {$payload['user_id']}\\n";
+                    echo " [+] Updated profile for user ID: {$payload['user_id']}\n";
                 } else {
                     $response['message'] = "Update failed: " . $conn->error;
-                    echo " [-] Profile update failed: " . $response['message'] . "\\n";
+                    echo " [-] Profile update failed: " . $response['message'] . "\n";
                 }
                 break;
 
             case 'password_reset':
                 $response['message'] = "Password reset functionality not yet implemented";
-                echo " [?] Password reset requested\\n";
+                echo " [?] Password reset requested\n";
                 break;
 
             default:
                 $response['message'] = "Unsupported action type";
-                echo " [?] Unknown message type\\n";
+                echo " [?] Unknown message type\n";
                 break;
         }
 
@@ -204,7 +204,7 @@ $callback = function ($msg) use ($channel, $conn) {
         $msg->ack();
     } catch (Exception $e) {
         error_log("Error processing message: " . $e->getMessage());
-        echo " [!] Error: " . $e->getMessage() . "\\n";
+        echo " [!] Error: " . $e->getMessage() . "\n";
     }
 };
 
@@ -216,7 +216,7 @@ try {
         $channel->wait();
     }
 } catch (Exception $e) {
-    echo "Channel error: " . $e->getMessage() . "\\n";
+    echo "Channel error: " . $e->getMessage() . "\n";
     $channel->close();
     $connection->close();
     exit(1);
