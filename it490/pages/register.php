@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Register | Your App Name</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../styles/style.css">
 </head>
 <body>
     <?php include_once __DIR__ . '/../navbar.php'; ?>
@@ -84,10 +84,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
             
             <div class="register-footer">
-                Already have an account? <a href="login.php">Sign in</a>
+                <p>Already have an account? </p>
+                <a href="login.php">Sign in</a>
             </div>
         </div>
     </div>
+    <img src="../images/dog3.png" alt="dog silhouette" id="dog3">
+    <img src="../images/dog4.png" alt="dog silhouette" id="dog4">
 
     <script>
         // Password toggle functionality
