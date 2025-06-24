@@ -1,33 +1,29 @@
 <?php
-// Start secure session
+// Start a secure PHP session
 function startSecureSession() {
-    // Check if session is already active
-    if (session_status() === PHP_SESSION_ACTIVE) {
-        return;
-    }
+    if (session_status() === PHP_SESSION_ACTIVE) return;
 
     $sessionName = 'SECURE_SESSION';
-    $secure = true; // Only send over HTTPS
-    $httponly = true; // Prevent JavaScript access
-    
-    if (session_status() === PHP_SESSION_NONE) {// Force sessions to only use cookies
-    ini_set('session.use_only_cookies', 1);
-    
-    // Set session cookie parameters
-    $cookieParams = session_get_cookie_params();
-    session_set_cookie_params([
-        'lifetime' => $cookieParams["lifetime"],
-        'path' => '/',
-        'domain' => $_SERVER['HTTP_HOST'],
-        'secure' => $secure,
-        'httponly' => $httponly,
-        'samesite' => 'Strict'
-    ]);
-    
-    session_name($sessionName);
-    session_start();
-    session_regenerate_id(true); // Regenerate ID to prevent fixation
- }
+    $secure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on'; // Detect HTTPS
+    $httponly = true;
+
+    if (session_status() === PHP_SESSION_NONE) {
+        ini_set('session.use_only_cookies', 1);
+
+        $cookieParams = session_get_cookie_params();
+        session_set_cookie_params([
+            'lifetime' => $cookieParams["lifetime"],
+            'path' => '/',
+            'domain' => $_SERVER['HTTP_HOST'],
+            'secure' => $secure,
+            'httponly' => $httponly,
+            'samesite' => 'Strict'
+        ]);
+
+        session_name($sessionName);
+        session_start();
+        session_regenerate_id(true); // Prevent session fixation
+    }
 }
 
 // Check if user is authenticated
@@ -36,23 +32,26 @@ function isAuthenticated(): bool {
     return isset($_SESSION['user']) && !empty($_SESSION['user']['id']);
 }
 
-// Require authentication with safe redirect
+// Require authentication and redirect to login if not authenticated
 function requireAuth(): void {
+    startSecureSession();
+
     if (!isAuthenticated()) {
-        $returnUrl = $_SERVER['REQUEST_URI'];
-        // Only set return URL if not already going to login
+        $returnUrl = $_SERVER['REQUEST_URI'] ?? '/pages/landing.php';
+
         if (!str_contains($returnUrl, 'login.php')) {
             $_SESSION['return_url'] = $returnUrl;
         }
-        header("Location: login.php");
+
+        header("Location: /pages/login.php");
         exit();
     }
 }
 
-// Get and clear the return URL from session
+// Get and clear the return URL from session or fallback to landing page
 function getReturnUrl(): string {
     startSecureSession();
-    $url = $_SESSION['return_url'] ?? 'landing.php';
+    $url = $_SESSION['return_url'] ?? '/pages/landing.php';
     unset($_SESSION['return_url']);
     return $url;
 }
