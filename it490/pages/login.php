@@ -4,9 +4,9 @@ require_once __DIR__ . '/../includes/mq_client.php';
 
 startSecureSession();
 
-// Set return URL fallback to landing page
+// Default return URL if not set
 if (!isset($_SESSION['return_url'])) {
-    $_SESSION['return_url'] = $_GET['return'] ?? '/it490/pages/landing.php'; // 🔁 updated
+    $_SESSION['return_url'] = $_GET['return'] ?? '/it490/pages/landing.php';
 }
 
 $error_message = '';
@@ -44,6 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
     <?php include_once __DIR__ . '/../navbar.php'; ?>
+
     <div class="login-container">
         <div class="login-header">
             <h2>Welcome</h2>
@@ -51,9 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <?php if (!empty($error_message)): ?>
-            <div class="error-message">
-                <?= $error_message ?>
-            </div>
+            <div class="error-message"><?= $error_message ?></div>
         <?php endif; ?>
 
         <form class="login-form" method="POST">
@@ -75,6 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <p>Forgot Password? <a href="forgot-password.php">Reset</a></p>
         </div>
     </div>
+
     <img src="../images/dogsilhouette.png" alt="dog silhouette" id="dog1">
     <img src="../images/dogsilhouette2.png" alt="dog silhouette" id="dog2">
 </body>
