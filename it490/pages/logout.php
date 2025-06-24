@@ -1,11 +1,9 @@
 <?php
 include_once __DIR__ . '/../auth.php';
+require_once __DIR__ . '/../includes/mq_client.php';
 startSecureSession();
 
 if (isset($_GET['confirmed']) && $_GET['confirmed'] === 'true') {
-    include_once __DIR__ . '/../includes/mq_client.php';
-
-    // Send logout message to MQ if user is known
     if (isset($_SESSION['user']['id'])) {
         sendMessage([
             'type' => 'logout',
@@ -13,11 +11,9 @@ if (isset($_GET['confirmed']) && $_GET['confirmed'] === 'true') {
         ]);
     }
 
-    // Clear all session data
-    $_SESSION = array();
+    $_SESSION = [];
     session_destroy();
 
-    // Redirect to login
     header("Location: login.php");
     exit();
 }
