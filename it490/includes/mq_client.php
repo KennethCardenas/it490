@@ -16,6 +16,7 @@ function sendMessage(array $payload): array {
                 throw new InvalidArgumentException('Username and password are required');
             }
             break;
+
         case 'register':
             foreach (['username','email','password'] as $f) {
                 if (empty($payload[$f])) {
@@ -26,6 +27,7 @@ function sendMessage(array $payload): array {
                 throw new InvalidArgumentException('Invalid email format');
             }
             break;
+
         case 'update_profile':
             foreach (['user_id','username','email'] as $f) {
                 if (empty($payload[$f])) {
@@ -36,33 +38,48 @@ function sendMessage(array $payload): array {
                 throw new InvalidArgumentException('Invalid email format');
             }
             break;
+
+        case 'logout':
+            if (empty($payload['user_id'])) {
+                throw new InvalidArgumentException("user_id is required for logout");
+            }
+            break;
+
+        default:
+            throw new InvalidArgumentException("Unsupported message type: {$payload['type']}");
     }
 
     try {
-        // Use the same RabbitMQ connection details as send.php
-
-$connection = new AMQPStreamConnection('100.87.203.113', 5672, 'kac63', 'Linklinkm1!');
+        $connection = new AMQPStreamConnection('100.87.203.113', 5672, 'kac63', 'Linklinkm1!');
         $channel = $connection->channel();
         $channel->queue_declare('user_request_queue', false, false, false, false);
+
         list($callbackQueue,) = $channel->queue_declare('', false, false, true, true);
         $corrId = uniqid();
+
         $msg = new AMQPMessage(json_encode($payload), [
             'correlation_id' => $corrId,
             'reply_to' => $callbackQueue
         ]);
+
         $channel->basic_publish($msg, '', 'user_request_queue');
+
         $response = null;
+
         $channel->basic_consume($callbackQueue, '', false, true, true, false,
             function ($rep) use (&$response, $corrId) {
                 if ($rep->get('correlation_id') === $corrId) {
                     $response = json_decode($rep->body, true);
                 }
             });
+
         while (!$response) {
             $channel->wait();
         }
+
         $channel->close();
         $connection->close();
+
         return $response;
     } catch (Exception $e) {
         error_log('MQ Connection failed: ' . $e->getMessage());
