@@ -193,6 +193,19 @@ $callback = function ($msg) use ($channel, $conn) {
                 echo " [?] Password reset requested\\n";
                 break;
 
+            case 'logout':
+                if (!empty($payload['user_id'])) {
+                    echo " [+] Logout event for user ID: {$payload['user_id']}\n";
+                    $response = [
+                        'status' => 'success',
+                        'message' => 'Logout recorded'
+                    ];
+                } else {
+                    $response['message'] = 'User ID missing for logout';
+                    echo " [-] Logout failed: Missing user ID\n";
+                }
+                break;
+
             default:
                 $response['message'] = "Unsupported action type";
                 echo " [?] Unknown message type\\n";
@@ -232,4 +245,3 @@ try {
 
 $channel->close();
 $connection->close();
-?>
