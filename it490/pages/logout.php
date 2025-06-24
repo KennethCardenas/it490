@@ -1,29 +1,34 @@
 <?php
 include_once __DIR__ . '/../auth.php';
-// Start session before attempting to destroy it
 startSecureSession();
 
-// Check if logout is confirmed
 if (isset($_GET['confirmed']) && $_GET['confirmed'] === 'true') {
-    // Clear all session variables
-    $_SESSION = array();
+    include_once __DIR__ . '/../includes/mq_client.php';
 
-    // Destroy the session
+    // Send logout message to MQ if user is known
+    if (isset($_SESSION['user']['id'])) {
+        sendMessage([
+            'type' => 'logout',
+            'user_id' => $_SESSION['user']['id']
+        ]);
+    }
+
+    // Clear all session data
+    $_SESSION = array();
     session_destroy();
 
-    // Redirect to login page
+    // Redirect to login
     header("Location: login.php");
     exit();
 }
-
-// If not confirmed, show logout confirmation page
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Logout | Your App Name</title>
+    <title>Logout | BarkBuddy</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../css/style.css">
@@ -41,7 +46,6 @@ if (isset($_GET['confirmed']) && $_GET['confirmed'] === 'true') {
             </div>
             <h2>Ready to leave?</h2>
             <p>Are you sure you want to log out of your account?</p>
-            
             <div class="logout-actions">
                 <a href="?confirmed=true" class="btn-logout">Yes, Logout</a>
                 <a href="landing.php" class="btn-cancel">Cancel</a>
