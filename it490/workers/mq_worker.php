@@ -16,44 +16,27 @@ function verifyPassword(string $password, string $hash): bool {
 }
 
 function validateEmailOrUsername($input) {
-    if (filter_var($input, FILTER_VALIDATE_EMAIL)) {
-        return ['field' => 'email', 'value' => $input];
-    }
-    return ['field' => 'username', 'value' => $input];
+    return filter_var($input, FILTER_VALIDATE_EMAIL)
+        ? ['field' => 'email', 'value' => $input]
+        : ['field' => 'username', 'value' => $input];
 }
 
 function checkDuplicateCredentials($conn, $username, $email, $excludeUserId = null) {
     $errors = [];
-    
+
     $query = "SELECT id FROM USERS WHERE username = ?";
-    if ($excludeUserId) {
-        $query .= " AND id != ?";
-    }
+    if ($excludeUserId) $query .= " AND id != ?";
     $stmt = $conn->prepare($query);
-    if ($excludeUserId) {
-        $stmt->bind_param("si", $username, $excludeUserId);
-    } else {
-        $stmt->bind_param("s", $username);
-    }
+    $excludeUserId ? $stmt->bind_param("si", $username, $excludeUserId) : $stmt->bind_param("s", $username);
     $stmt->execute();
-    if ($stmt->get_result()->num_rows > 0) {
-        $errors[] = "Username already exists";
-    }
+    if ($stmt->get_result()->num_rows > 0) $errors[] = "Username already exists";
 
     $query = "SELECT id FROM USERS WHERE email = ?";
-    if ($excludeUserId) {
-        $query .= " AND id != ?";
-    }
+    if ($excludeUserId) $query .= " AND id != ?";
     $stmt = $conn->prepare($query);
-    if ($excludeUserId) {
-        $stmt->bind_param("si", $email, $excludeUserId);
-    } else {
-        $stmt->bind_param("s", $email);
-    }
+    $excludeUserId ? $stmt->bind_param("si", $email, $excludeUserId) : $stmt->bind_param("s", $email);
     $stmt->execute();
-    if ($stmt->get_result()->num_rows > 0) {
-        $errors[] = "Email already exists";
-    }
+    if ($stmt->get_result()->num_rows > 0) $errors[] = "Email already exists";
 
     return $errors;
 }
@@ -75,7 +58,6 @@ $callback = function ($msg) use ($channel, $conn) {
     try {
         $payload = json_decode($msg->body, true);
         $response = ['status' => 'error', 'message' => 'Unknown action'];
-        
         echo " [x] Processing: " . ($payload['type'] ?? 'unknown') . "\n";
 
         switch ($payload['type'] ?? '') {
@@ -123,12 +105,11 @@ $callback = function ($msg) use ($channel, $conn) {
                 $stmt->bind_param("sss", $payload['username'], $payload['email'], $hashedPassword);
 
                 if ($stmt->execute()) {
-                    $userId = $stmt->insert_id;
                     $response = [
                         'status' => 'success',
                         'message' => 'Registration successful',
                         'user' => [
-                            'id' => $userId,
+                            'id' => $stmt->insert_id,
                             'username' => $payload['username'],
                             'email' => $payload['email']
                         ]
@@ -159,8 +140,7 @@ $callback = function ($msg) use ($channel, $conn) {
 
                 if (!empty($payload['password'])) {
                     $query .= ", password = ?";
-                    $hashedPassword = hashPassword($payload['password']);
-                    $params[] = $hashedPassword;
+                    $params[] = hashPassword($payload['password']);
                     $types .= "s";
                 }
 
@@ -196,10 +176,7 @@ $callback = function ($msg) use ($channel, $conn) {
             case 'logout':
                 if (!empty($payload['user_id'])) {
                     echo " [+] Logout event for user ID: {$payload['user_id']}\n";
-                    $response = [
-                        'status' => 'success',
-                        'message' => 'Logout recorded'
-                    ];
+                    $response = ['status' => 'success', 'message' => 'Logout recorded'];
                 } else {
                     $response['message'] = 'User ID missing for logout';
                     echo " [-] Logout failed: Missing user ID\n";
@@ -212,7 +189,6 @@ $callback = function ($msg) use ($channel, $conn) {
                 break;
         }
 
-        // Send response back to the reply_to queue if specified
         if ($msg->has('reply_to')) {
             $responseMsg = new AMQPMessage(
                 json_encode($response),
@@ -237,9 +213,6 @@ try {
     }
 } catch (Exception $e) {
     echo "Channel error: " . $e->getMessage() . "\n";
-    $channel->close();
-    $connection->close();
-    exit(1);
 }
 
 $channel->close();
