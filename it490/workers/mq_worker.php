@@ -68,7 +68,6 @@ try {
 
 $channel = $connection->channel();
 $channel->queue_declare('user_request_queue', false, false, false, false);
-$channel->queue_declare('response_queue', false, false, false, false);
 
 echo " [*] Waiting for messages on 'user_request_queue'. To exit press CTRL+C\n";
 
@@ -200,13 +199,13 @@ $callback = function ($msg) use ($channel, $conn) {
                 break;
         }
 
-        if (isset($payload['correlation_id']) && $msg->has('reply_to')) {
-            $replyTo = $msg->get('reply_to');
+        // Send response back to the reply_to queue if specified
+        if ($msg->has('reply_to')) {
             $responseMsg = new AMQPMessage(
                 json_encode($response),
-                ['correlation_id' => $payload['correlation_id']]
+                ['correlation_id' => $msg->get('correlation_id')]
             );
-            $channel->basic_publish($responseMsg, '', $replyTo);
+            $msg->getChannel()->basic_publish($responseMsg, '', $msg->get('reply_to'));
         }
 
 

@@ -43,14 +43,14 @@ function sendMessage(array $payload): array {
 
 $connection = new AMQPStreamConnection('100.87.203.113', 5672, 'kac63', 'Linklinkm1!');
         $channel = $connection->channel();
-        $channel->queue_declare('user_actions_queue', false, true, false, false);
+        $channel->queue_declare('user_request_queue', false, false, false, false);
         list($callbackQueue,) = $channel->queue_declare('', false, false, true, true);
         $corrId = uniqid();
         $msg = new AMQPMessage(json_encode($payload), [
             'correlation_id' => $corrId,
             'reply_to' => $callbackQueue
         ]);
-        $channel->basic_publish($msg, '', 'user_actions_queue');
+        $channel->basic_publish($msg, '', 'user_request_queue');
         $response = null;
         $channel->basic_consume($callbackQueue, '', false, true, true, false,
             function ($rep) use (&$response, $corrId) {

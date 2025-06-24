@@ -1,30 +1,35 @@
 <?php
-include_once __DIR__ . '/../auth.php';
+require_once __DIR__ . '/../auth.php';
+require_once __DIR__ . '/../includes/mq_client.php';
+
+// Start session and default return path
+startSecureSession();
+$_SESSION['return_url'] = $_GET['return'] ?? '/dashboard.php';
 
 // Initialize error message
 $error_message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    include_once __DIR__ . '/../includes/mq_client.php';
-    
+    $username = trim($_POST['username'] ?? '');
+    $password = $_POST['password'] ?? '';
+
     $payload = [
         "type" => "login",
-        "username" => $_POST['username'],
-        "password" => $_POST['password']
+        "username" => $username,
+        "password" => $password
     ];
-    
+
     $response = sendMessage($payload);
-    
-    if ($response['status'] === 'success') {
-        startSecureSession();
+
+    if (isset($response['status']) && $response['status'] === 'success') {
         $_SESSION['user'] = $response['user'];
-        
-        // Redirect to return URL or landing page
+
+        // Redirect to return URL or dashboard
         $returnUrl = getReturnUrl();
         header("Location: $returnUrl");
         exit();
     } else {
-        $error_message = "Login failed: " . $response['message'];
+        $error_message = "Login failed: " . htmlspecialchars($response['message'] ?? 'Unknown error.');
     }
 }
 ?>
@@ -46,35 +51,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <h2>Welcome</h2>
             <p>Please enter your credentials to login</p>
         </div>
-        
-        <?php if (isset($error_message)): ?>
+
+        <?php if (!empty($error_message)): ?>
             <div class="error-message">
-                <?php echo htmlspecialchars($error_message); ?>
+                <?= $error_message ?>
             </div>
         <?php endif; ?>
-        
+
         <form class="login-form" method="POST">
             <div class="form-group">
                 <label for="username">Username or Email</label>
                 <input type="text" id="username" name="username" placeholder="Enter username or email" required>
             </div>
-            
+
             <div class="form-group">
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" placeholder="Enter password" required>
             </div>
-            
+
             <button type="submit">Login</button>
         </form>
-        
+
         <div class="login-footer">
             <div id="noAccount">
                 <p>Don't have an account?</p>
                 <a href="register.php">Sign up</a><br>
             </div>
-            <div id="forgotPassword">
+            <div id="forgotPasswordWrapper">
                 <p>Forgot Password?</p>
-                <a href="forgot-password.php" id="forgotPassword">Reset</a>
+                <a href="forgot-password.php" id="forgotPasswordLink">Reset</a>
             </div>
         </div>
     </div>
