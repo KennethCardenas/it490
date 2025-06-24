@@ -2,11 +2,13 @@
 require_once __DIR__ . '/../auth.php';
 require_once __DIR__ . '/../includes/mq_client.php';
 
-// Start session and default return path
 startSecureSession();
-$_SESSION['return_url'] = $_GET['return'] ?? '/dashboard.php';
 
-// Initialize error message
+// Set return URL fallback to landing page
+if (!isset($_SESSION['return_url'])) {
+    $_SESSION['return_url'] = $_GET['return'] ?? '/pages/landing.php'; // 🔁 updated
+}
+
 $error_message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -23,13 +25,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (isset($response['status']) && $response['status'] === 'success') {
         $_SESSION['user'] = $response['user'];
-
-        // Redirect to return URL or dashboard
-        $returnUrl = getReturnUrl();
-        header("Location: $returnUrl");
+        header("Location: " . getReturnUrl());
         exit();
     } else {
-        $error_message = "Login failed: " . htmlspecialchars($response['message'] ?? 'Unknown error.');
+        $error_message = "Login failed: " . htmlspecialchars($response['message'] ?? 'Unknown error');
     }
 }
 ?>
@@ -38,7 +37,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login | BarkBuddy</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -73,14 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
 
         <div class="login-footer">
-            <div id="noAccount">
-                <p>Don't have an account?</p>
-                <a href="register.php">Sign up</a><br>
-            </div>
-            <div id="forgotPasswordWrapper">
-                <p>Forgot Password?</p>
-                <a href="forgot-password.php" id="forgotPasswordLink">Reset</a>
-            </div>
+            <p>Don't have an account? <a href="register.php">Sign up</a></p>
+            <p>Forgot Password? <a href="forgot-password.php">Reset</a></p>
         </div>
     </div>
     <img src="../images/dogsilhouette.png" alt="dog silhouette" id="dog1">
