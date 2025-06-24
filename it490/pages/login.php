@@ -6,7 +6,7 @@ startSecureSession();
 
 // Set return URL fallback to landing page
 if (!isset($_SESSION['return_url'])) {
-    $_SESSION['return_url'] = $_GET['return'] ?? '/pages/landing.php'; // 🔁 updated
+    $_SESSION['return_url'] = $_GET['return'] ?? '/it490/pages/landing.php'; // 🔁 updated
 }
 
 $error_message = '';
