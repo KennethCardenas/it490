@@ -1,5 +1,5 @@
 <?php if (!defined('HEADER_INCLUDED')) define('HEADER_INCLUDED', true);
-$cssPath = dirname($_SERVER['SCRIPT_NAME']) . '/../css/style.css';
+$cssPath = '/it490/styles/style.css';
 ?>
 <!DOCTYPE html>
 <html lang="en">
