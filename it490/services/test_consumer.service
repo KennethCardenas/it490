@@ -1,0 +1,14 @@
+[Unit]
+Description=Test MQ Consumer Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/php /home/<username>/it490/consumers/test_consumer.php
+Restart=always
+RestartSec=5
+User=<username>
+WorkingDirectory=/home/<username>/it490
+
+[Install]
+WantedBy=multi-user.target
