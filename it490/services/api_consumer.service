@@ -4,11 +4,11 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-ExecStart=/usr/bin/php /home/kac123/it490/consumers/api_consumer.php
+ExecStart=/usr/bin/php /home/fm369/it490/it490/services/api_consumer.service
 Restart=always
 RestartSec=5
-User=kac63
-WorkingDirectory=/home/kac123/it490
+User=fm369
+WorkingDirectory=/home/fm369/it490
 
 [Install]
 WantedBy=multi-user.target
