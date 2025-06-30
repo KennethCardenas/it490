@@ -1,51 +1,51 @@
-# Dev Log: 05
-## Date / Module: June 28, 2025 / Module 5
+# Dev Log: 05  
+## Date / Module: June 28, 2025 / Module 5  
 ## Name: Kenneth Cardenas (kac63)
 
 ### GitHub Issue Links Assigned
-- [ ] System Service Implementation
-  - Acceptance Criteria:
-    - Create system service for DB MQ Consumer
-    - Create system service for API MQ Consumer
-    - Services start on boot
-    - Services restart on failure
-    - Network availability check
-  - Started Date: June 19, 2025
-  - Target Completion Date: June 30, 2025
-  - Finished Date: N/A
-  - Summary of individual contribution for this entry:
-    - Researched systemd service configuration
-    - Created initial draft of DB MQ Consumer service file
-    - Tested service restart behavior
-    - Collaborated on network availability check implementation
+- [x] Configure and Test DB MQ Consumer Service  
+  - **Acceptance Criteria:**  
+    - Create system service for DB MQ Consumer  
+    - Ensure service starts on boot  
+    - Confirm service restarts on failure  
+    - Waits for network availability before starting  
+  - **Started Date:** June 19, 2025  
+  - **Target Completion Date:** June 30, 2025  
+  - **Finished Date:** June 28, 2025  
+  - **Summary of individual contribution for this entry:**  
+    - Researched systemd service configuration  
+    - Created and deployed the `db_consumer.service` file  
+    - Resolved `status=217/USER` and other common systemd issues  
+    - Validated service startup, network wait conditions, and auto-restart behavior
 
 ### Noteworthy Learnings and resource links
-- Learned about systemd unit file syntax and directives
-- Discovered importance of proper service dependencies
-- Understanding of process supervision patterns
+- Learned systemd unit file structure and directives  
+- Understood how to link service dependencies to `network-online.target`  
+- Gained experience troubleshooting process supervision and service lifecycles  
+- Verified MQ and DB integration through consumer logs and service recovery  
 
 ### Problems/Difficulties Encountered
-- Determining correct network availability check method
-- Service restart timing issues
-- Permission challenges with service files
-- Debugging service failures
-- Coordinating testing across team members' environments
+- Matching system users and file paths across VMs  
+- `ExecStart` failures due to incorrect PHP paths or permissions  
+- RabbitMQ queue declaration mismatches causing service exit  
+- Conflicts between script behavior and systemd `Type` defaults  
+- Debugging across VMs with varying directory structures  
 
 ### Positive Shoutout to Team Member(s)
-- Antonio for troubleshooting service dependencies
-- Jerry for testing on multiple VM configurations
-- Filipe for documenting the service configuration options
-- Jhonathan for coordinating the group testing schedule
-- chris for helping solve bug issues
+- **Filip** – for developing the `api_consumer.php` script and configuring its `.service` file  
+- **Jonathan** – for setting up and validating the test consumer on a node VM  
+- **Chris** – for identifying and helping resolve queue durability mismatches  
+- **Antonio** – for verifying successful service reboots and startup status  
+- **Jerry** – for supporting multi-VM testing to ensure cross-environment stability  
 
 ### What can be improved individually?
-- More thorough testing of edge cases
-- Better documentation of service configurations
-- Earlier communication about environment differences
-- More detailed commit messages for service files
+- Improve time estimates when testing services across multiple environments  
+- Add inline comments in `.service` files for better documentation  
+- Use clearer commit messages for configuration changes  
+- Run full end-to-end tests before pushing MQ changes  
 
 ### What can be improved as a team?
-- Standardized testing approach across environments
-- Shared checklist for service requirements
-- Better division of testing responsibilities
-- Consolidated documentation of service configurations
+- Assign one person to validate each consumer per VM  
+- Keep consistent file and folder structure across all VMs  
+- Create a central test plan checklist with pass/fail tracking  
+- Document each working `.service` configuration with screenshots and paths for others to follow
