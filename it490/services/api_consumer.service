@@ -1,0 +1,14 @@
+[Unit]
+Description=API MQ Consumer Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/php /home/fm369/it490/it490/services/api_consumer.service
+Restart=always
+RestartSec=5
+User=fm369
+WorkingDirectory=/home/fm369/it490
+
+[Install]
+WantedBy=multi-user.target
