@@ -19,7 +19,7 @@ $callback = function ($msg) use ($conn) {
 
     if ($type === 'get_user_by_id') {
         $userId = intval($request['id'] ?? 0);
-        $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+        $stmt = $conn->prepare("SELECT * FROM USERS WHERE id = ?");
         if ($stmt) {
             $stmt->bind_param('i', $userId);
             $stmt->execute();
