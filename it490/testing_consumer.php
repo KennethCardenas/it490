@@ -14,12 +14,12 @@ echo "[*] Waiting for messages on 'user_request_queue'. To exit press CTRL+C\n";
 $callback = function ($msg) use ($conn) {
     echo "[x] Received ", $msg->body, "\n";
     $request = json_decode($msg->body, true);
-    $type = $request['type'] ?? '';
+    $type = strtoupper($request['TYPE'] ?? '');
     $response = ['error' => 'Invalid request'];
 
-    if ($type === 'get_user_by_id') {
-        $userId = intval($request['id'] ?? 0);
-        $stmt = $conn->prepare("SELECT * FROM USERS WHERE id = ?");
+    if ($type === 'GET_USER_BY_ID') {
+        $userId = intval($request['ID'] ?? 0);
+        $stmt = $conn->prepare("SELECT * FROM USERS WHERE ID = ?");
         if ($stmt) {
             $stmt->bind_param('i', $userId);
             $stmt->execute();
@@ -29,22 +29,24 @@ $callback = function ($msg) use ($conn) {
         } else {
             $response = ['error' => 'Prepare failed: ' . $conn->error];
         }
-    } elseif ($type === 'register') {
-        $username = $request['username'] ?? '';
-        $email = $request['email'] ?? '';
-        $password = $request['password'] ?? '';
+
+    } elseif ($type === 'REGISTER') {
+        $username = $request['USERNAME'] ?? '';
+        $email = $request['EMAIL'] ?? '';
+        $password = $request['PASSWORD'] ?? '';
 
         if ($username && $email && $password) {
-            $check = $conn->prepare("SELECT id FROM users WHERE username = ? OR email = ?");
+            // Check for existing username/email
+            $check = $conn->prepare("SELECT ID FROM USERS WHERE USERNAME = ? OR EMAIL = ?");
             $check->bind_param("ss", $username, $email);
             $check->execute();
             $check->store_result();
 
             if ($check->num_rows > 0) {
-                $response = ['error' => 'Username or email already exists'];
+                $response = ['error' => 'USERNAME or EMAIL already exists'];
             } else {
                 $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-                $stmt = $conn->prepare("INSERT INTO users (username, email, password) VALUES (?, ?, ?)");
+                $stmt = $conn->prepare("INSERT INTO USERS (USERNAME, EMAIL, PASSWORD) VALUES (?, ?, ?)");
                 $stmt->bind_param("sss", $username, $email, $hashedPassword);
                 if ($stmt->execute()) {
                     $response = ['success' => true, 'message' => 'User registered'];
@@ -56,7 +58,7 @@ $callback = function ($msg) use ($conn) {
 
             $check->close();
         } else {
-            $response = ['error' => 'Missing username, email, or password'];
+            $response = ['error' => 'Missing USERNAME, EMAIL, or PASSWORD'];
         }
     }
 
