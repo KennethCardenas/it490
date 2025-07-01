@@ -1,6 +1,6 @@
 <?php
-require_once __DIR__ . '/../vendor/autoload.php';
-require_once __DIR__ . '/../api/connect.php'; // $conn (MySQLi)
+require_once __DIR__ . '/../it490/vendor/autoload.php';
+require_once __DIR__ . '/../it490/api/connect.php'; // $conn (MySQLi)
 
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
