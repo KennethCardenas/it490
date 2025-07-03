@@ -383,14 +383,6 @@ body {
   transform: translateY(-1px);
 }
 
-.action-btn.logout {
-  background: #dc3545;
-}
-
-.action-btn.logout:hover {
-  background: #c82333;
-}
-
 .recent-activity {
   background: white;
   border-radius: 12px;
@@ -487,6 +479,121 @@ body {
     width: 100%;
     justify-content: center;
     max-width: 200px;
+  }
+}
+
+/* Logout Page Styles */
+.logout-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1rem;
+  background: #f2f2f2;
+}
+
+.logout-card {
+  width: 100%;
+  max-width: 400px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+  text-align: center;
+}
+
+.logout-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1rem;
+  background: linear-gradient(135deg, #0077cc, #005aa3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.2);
+}
+
+.logout-icon svg {
+  width: 40px;
+  height: 40px;
+}
+
+.logout-card h2 {
+  font-size: 1.5rem;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.logout-card p {
+  font-size: 1rem;
+  color: #666;
+  margin-bottom: 1.5rem;
+}
+
+.logout-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-logout,
+.btn-cancel {
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.btn-logout {
+  background: #0077cc;
+  color: white;
+}
+
+.btn-logout:hover {
+  background: #005aa3;
+  transform: translateY(-1px);
+}
+
+.btn-cancel {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-cancel:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .logout-card {
+    padding: 1.5rem;
+  }
+
+  .logout-icon {
+    width: 60px;
+    height: 60px;
+  }
+
+  .logout-icon svg {
+    width: 32px;
+    height: 32px;
+  }
+
+  .logout-card h2 {
+    font-size: 1.25rem;
+  }
+
+  .btn-logout,
+  .btn-cancel {
+    width: 100%;
+    justify-content: center;
   }
 }
 
@@ -720,4 +827,5 @@ body {
     padding: 0.875rem 1rem;
     font-size: 1rem;
   }
+  
 }
