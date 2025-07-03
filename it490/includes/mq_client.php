@@ -41,7 +41,21 @@ function sendMessage(array $payload): array {
 
         case 'logout':
             if (empty($payload['user_id'])) {
-                throw new InvalidArgumentException("user_id is required for logout");
+                throw new InvalidArgumentException('user_id is required for logout');
+            }
+            break;
+
+        case 'add_dog':
+            foreach (['owner_id','name','breed'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
+                }
+            }
+            break;
+
+        case 'list_dogs':
+            if (empty($payload['owner_id'])) {
+                throw new InvalidArgumentException('owner_id is required');
             }
             break;
 
