@@ -15,6 +15,12 @@
                     </a>
                     
                     <?php if (isAuthenticated()): ?>
+                        <?php if (isAdmin()): ?>
+                        <a href="admin.php" class="nav-link">
+                            <i class="fas fa-tools"></i>
+                            <span>Admin</span>
+                        </a>
+                        <?php endif; ?>
                         <a href="profile.php" class="nav-link">
                             <i class="fas fa-user"></i>
                             <span>Profile</span>

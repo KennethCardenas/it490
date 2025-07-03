@@ -34,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <i class="fas fa-user"></i>
         </div>
         <h2>Your Profile</h2>
+        <p class="role-label">Role: <?= htmlspecialchars($user['role']) ?></p>
     </div>
 
     <?php if (!empty($success_message)): ?>

@@ -55,3 +55,23 @@ function getReturnUrl(): string {
     unset($_SESSION['return_url']);
     return $url;
 }
+
+// Check if the current user has the given role
+function hasRole(string $role): bool {
+    startSecureSession();
+    return isset($_SESSION['user']['role']) && $_SESSION['user']['role'] === $role;
+}
+
+// Convenience check for admin role
+function isAdmin(): bool {
+    return hasRole('admin');
+}
+
+// Require a specific role to access a page
+function requireRole(string $role): void {
+    if (!hasRole($role)) {
+        header('HTTP/1.1 403 Forbidden');
+        echo 'Access denied';
+        exit();
+    }
+}
