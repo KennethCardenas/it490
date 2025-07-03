@@ -58,17 +58,13 @@ $callback = function ($msg) use ($channel, $conn) {
     try {
         $payload = json_decode($msg->body, true);
         $response = ['status' => 'error', 'message' => 'Unknown action'];
-<<<<<<< HEAD
-        
-        echo " [x] Processing: " . ($payload['type'] ?? 'unknown') . "\\n";
-=======
+
         echo " [x] Processing: " . ($payload['type'] ?? 'unknown') . "\n";
->>>>>>> 4c3011c90e950b90d53b99920ba46c83d5017aa0
 
         switch ($payload['type'] ?? '') {
             case 'login':
                 $credential = validateEmailOrUsername($payload['username']);
-                $query = "SELECT id, username, email, password FROM USERS WHERE {$credential['field']} = ?";
+                $query = "SELECT id, username, email, role, password FROM USERS WHERE {$credential['field']} = ?";
                 $stmt = $conn->prepare($query);
                 $stmt->bind_param("s", $credential['value']);
                 $stmt->execute();
@@ -82,7 +78,8 @@ $callback = function ($msg) use ($channel, $conn) {
                             'user' => [
                                 'id' => $user['id'],
                                 'username' => $user['username'],
-                                'email' => $user['email']
+                                'email' => $user['email'],
+                                'role' => $user['role']
                             ]
                         ];
                         echo " [+] Login success for user: {$user['username']}\\n";
@@ -105,9 +102,10 @@ $callback = function ($msg) use ($channel, $conn) {
                 }
 
                 $hashedPassword = hashPassword($payload['password']);
-                $query = "INSERT INTO USERS (username, email, password, created_at) VALUES (?, ?, ?, NOW())";
+                $role = $payload['role'] ?? 'user';
+                $query = "INSERT INTO USERS (username, email, password, role, created_at) VALUES (?, ?, ?, ?, NOW())";
                 $stmt = $conn->prepare($query);
-                $stmt->bind_param("sss", $payload['username'], $payload['email'], $hashedPassword);
+                $stmt->bind_param("ssss", $payload['username'], $payload['email'], $hashedPassword, $role);
 
                 if ($stmt->execute()) {
                     $response = [
@@ -157,13 +155,20 @@ $callback = function ($msg) use ($channel, $conn) {
                 $stmt->bind_param($types, ...$params);
 
                 if ($stmt->execute()) {
+                    $roleQuery = $conn->prepare("SELECT role FROM USERS WHERE id = ?");
+                    $roleQuery->bind_param("i", $payload['user_id']);
+                    $roleQuery->execute();
+                    $roleResult = $roleQuery->get_result();
+                    $roleRow = $roleResult->fetch_assoc();
+
                     $response = [
                         'status' => 'success',
                         'message' => 'Profile updated',
                         'user' => [
                             'id' => $payload['user_id'],
                             'username' => $payload['username'],
-                            'email' => $payload['email']
+                            'email' => $payload['email'],
+                            'role' => $roleRow['role'] ?? 'user'
                         ]
                     ];
                     echo " [+] Updated profile for user ID: {$payload['user_id']}\\n";
@@ -218,14 +223,10 @@ try {
         $channel->wait();
     }
 } catch (Exception $e) {
-<<<<<<< HEAD
-    echo "Channel error: " . $e->getMessage() . "\\n";
+    echo "Channel error: " . $e->getMessage() . "\n";
     $channel->close();
     $connection->close();
     exit(1);
-=======
-    echo "Channel error: " . $e->getMessage() . "\n";
->>>>>>> 4c3011c90e950b90d53b99920ba46c83d5017aa0
 }
 
 $channel->close();
