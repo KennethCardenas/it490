@@ -64,7 +64,23 @@ function sendMessage(array $payload): array {
     }
 
     try {
-        $connection = new AMQPStreamConnection('100.87.203.113', 5672, 'kac63', 'Linklinkm1!');
+        // Add connection timeout settings
+        $connection = new AMQPStreamConnection(
+            '100.87.203.113', 
+            5672, 
+            'kac63', 
+            'Linklinkm1!',
+            '/',
+            false,
+            'AMQPLAIN',
+            null,
+            'en_US',
+            30.0,  // connection_timeout
+            30.0,  // read_write_timeout
+            null,
+            false,
+            30     // heartbeat
+        );
         $channel = $connection->channel();
         $channel->queue_declare('user_request_queue', false, false, false, false);
 
@@ -79,6 +95,8 @@ function sendMessage(array $payload): array {
         $channel->basic_publish($msg, '', 'user_request_queue');
 
         $response = null;
+        $timeout = 0;
+        $maxTimeout = 30; // 30 second timeout
 
         $channel->basic_consume($callbackQueue, '', false, true, true, false,
             function ($rep) use (&$response, $corrId) {
@@ -87,8 +105,15 @@ function sendMessage(array $payload): array {
                 }
             });
 
-        while (!$response) {
-            $channel->wait();
+        while (!$response && $timeout < $maxTimeout) {
+            $channel->wait(null, false, 5); // Wait for 5 seconds max
+            $timeout += 5;
+        }
+
+        if (!$response) {
+            $channel->close();
+            $connection->close();
+            return ['status' => 'error', 'message' => 'Request timeout - worker may not be running'];
         }
 
         $channel->close();

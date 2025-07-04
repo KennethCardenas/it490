@@ -24,19 +24,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register | Your App Name</title>
+    <title>Register | BarkBuddy</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../styles/style.css">
 </head>
 <body>
     <?php include_once __DIR__ . '/../navbar.php'; ?>
+    
     <div class="register-container">
         <div class="register-card">
-            
-<?php $title = "Register"; include_once __DIR__ . "/../header.php"; ?>
-<div class="register-container">
-    <div class="register-card">
             <div class="register-header">
                 <h2>Create Account</h2>
                 <p>Join our community today</p>
@@ -93,6 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
     </div>
+    
     <img src="../images/dog3.png" alt="dog silhouette" id="dog3">
     <img src="../images/dog4.png" alt="dog silhouette" id="dog4">
 
@@ -105,41 +103,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 e.preventDefault();
             }
         });
+        
         // Password toggle functionality
         const togglePassword = document.querySelector('#togglePassword');
         const password = document.querySelector('#password');
         
-        togglePassword.addEventListener('click', function() {
-            const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
-            password.setAttribute('type', type);
-            this.classList.toggle('fa-eye-slash');
-            this.classList.toggle('fa-eye');
-        });
+        if (togglePassword && password) {
+            togglePassword.addEventListener('click', function() {
+                const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+                password.setAttribute('type', type);
+                this.classList.toggle('fa-eye-slash');
+                this.classList.toggle('fa-eye');
+            });
+        }
         
         // Basic password strength indicator
-        password.addEventListener('input', function() {
-            const strengthMeter = document.querySelector('.strength-meter');
-            const strengthText = document.querySelector('.strength-text');
-            const passwordValue = this.value;
-            let strength = 0;
-            
-            if (passwordValue.length > 0) strength++;
-            if (passwordValue.length >= 8) strength++;
-            if (/[A-Z]/.test(passwordValue)) strength++;
-            if (/[0-9]/.test(passwordValue)) strength++;
-            if (/[^A-Za-z0-9]/.test(passwordValue)) strength++;
-            
-            const strengthClasses = ['weak', 'fair', 'good', 'strong', 'very-strong'];
-            strengthMeter.className = 'strength-meter ' + (strengthClasses[strength-1] || '');
-            
-            const strengthMessages = [
-                'Very weak',
-                'Weak',
-                'Fair',
-                'Strong',
-                'Very strong'
-            ];
-            strengthText.textContent = strengthMessages[strength] || 'Password strength';
-        });
+        if (password) {
+            password.addEventListener('input', function() {
+                const strengthMeter = document.querySelector('.strength-meter');
+                const strengthText = document.querySelector('.strength-text');
+                const passwordValue = this.value;
+                let strength = 0;
+                
+                if (passwordValue.length > 0) strength++;
+                if (passwordValue.length >= 8) strength++;
+                if (/[A-Z]/.test(passwordValue)) strength++;
+                if (/[0-9]/.test(passwordValue)) strength++;
+                if (/[^A-Za-z0-9]/.test(passwordValue)) strength++;
+                
+                const strengthClasses = ['weak', 'fair', 'good', 'strong', 'very-strong'];
+                if (strengthMeter) {
+                    strengthMeter.className = 'strength-meter ' + (strengthClasses[strength-1] || '');
+                }
+                
+                const strengthMessages = [
+                    'Very weak',
+                    'Weak', 
+                    'Fair',
+                    'Strong',
+                    'Very strong'
+                ];
+                if (strengthText) {
+                    strengthText.textContent = strengthMessages[strength] || 'Password strength';
+                }
+            });
+        }
     </script>
-<?php include_once __DIR__ . "/../footer.php"; ?>
+    
+    <?php include_once __DIR__ . "/../footer.php"; ?>
+</body>
+</html>
