@@ -25,6 +25,10 @@
                             <i class="fas fa-user"></i>
                             <span>Profile</span>
                         </a>
+                        <a href="dogs.php" class="nav-link">
+                            <i class="fas fa-dog"></i>
+                            <span>Dogs</span>
+                        </a>
                         <a href="logout.php" class="nav-link">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Logout</span>

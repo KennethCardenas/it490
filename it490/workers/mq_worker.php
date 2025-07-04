@@ -2,8 +2,8 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../api/connect.php';
 
-use PhpAmqpLib\\Connection\\AMQPStreamConnection;
-use PhpAmqpLib\\Message\\AMQPMessage;
+use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Message\AMQPMessage;
 
 define('PASSWORD_BCRYPT_COST', 12);
 
@@ -42,7 +42,22 @@ function checkDuplicateCredentials($conn, $username, $email, $excludeUserId = nu
 }
 
 try {
-    $connection = new AMQPStreamConnection('100.87.203.113', 5672, 'kac63', 'Linklinkm1!');
+    $connection = new AMQPStreamConnection(
+        '100.87.203.113', 
+        5672, 
+        'kac63', 
+        'Linklinkm1!',
+        '/',
+        false,
+        'AMQPLAIN',
+        null,
+        'en_US',
+        30.0,  // connection_timeout
+        30.0,  // read_write_timeout
+        null,
+        false,
+        30     // heartbeat
+    );
     echo " [*] Connected to RabbitMQ at 100.87.203.113\n";
 } catch (Exception $e) {
     echo " [!] Failed to connect to RabbitMQ: " . $e->getMessage() . "\n";
@@ -190,6 +205,34 @@ $callback = function ($msg) use ($channel, $conn) {
                 } else {
                     $response['message'] = 'User ID missing for logout';
                     echo " [-] Logout failed: Missing user ID\n";
+                }
+                break;
+
+            case 'add_dog':
+                $stmt = $conn->prepare("INSERT INTO DOGS (owner_id, name, breed, age, notes, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
+                $age = $payload['age'] ?? null;
+                $notes = $payload['notes'] ?? '';
+                $stmt->bind_param('issis', $payload['owner_id'], $payload['name'], $payload['breed'], $age, $notes);
+                if ($stmt->execute()) {
+                    $response = ['status'=>'success','dog_id'=>$stmt->insert_id];
+                    echo " [+] Added dog {$payload['name']} for user {$payload['owner_id']}\n";
+                } else {
+                    $response['message'] = 'Failed to add dog: ' . $conn->error;
+                    echo " [-] Failed to add dog: {$conn->error}\n";
+                }
+                break;
+
+            case 'list_dogs':
+                $stmt = $conn->prepare("SELECT id, name, breed, age, notes FROM DOGS WHERE owner_id = ? ORDER BY created_at DESC");
+                $stmt->bind_param('i', $payload['owner_id']);
+                if ($stmt->execute()) {
+                    $res = $stmt->get_result();
+                    $dogs = [];
+                    while ($row = $res->fetch_assoc()) { $dogs[] = $row; }
+                    $response = ['status'=>'success','dogs'=>$dogs];
+                } else {
+                    $response['message'] = 'Failed to fetch dogs: ' . $conn->error;
+                    echo " [-] Failed to fetch dogs: {$conn->error}\n";
                 }
                 break;
 
