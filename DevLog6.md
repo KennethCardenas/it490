@@ -1,64 +1,60 @@
 # Dev Log: 06  
-## Date / Module: July 6, 2025 / Module 6  
+## Date / Module: July 7, 2025 / Module 6  
 ## Name: Kenneth Cardenas  
 
 ### GitHub Issue Links Assigned  
-- [x] System Service Implementation  
-  - Acceptance Criteria:  
-    - Functional DB and API consumers  
-    - Proper .service file configurations  
-    - Network-aware startup  
-    - Auto-recovery functionality  
-  - Started Date: June 23, 2025  
-  - Target Completion Date: June 26, 2025  
-  - Finished Date: June 26, 2025  
-  - Summary of individual contribution:  
-    - Coordinated service file testing  
-    - Documented recovery procedures  
-    - Assisted with recording preparation  
+- Profile Integration  
+- Sitter Lookup + Access Granting  
+- Merge Conflict Resolution  
+- MQ Handler Expansion  
 
-- [x] Cross-VM Validation  
-  - Acceptance Criteria:  
-    - Consistent behavior across environments  
-    - Verified message durability  
-    - Confirmed proper service sequencing  
-  - Started Date: July 2, 2025  
-  - Target Completion Date: July 2, 2025  
-  - Finished Date: July 2, 2025  
-  - Summary of individual contribution:  
-    - Tested service interactions  
-    - Validated failover scenarios  
-    - Reviewed test consumer outputs  
+### Acceptance Criteria  
+- Dynamic sitter listing with `list_sitters` queue  
+- Owner role gatekeeping on access actions  
+- Merged and tested all profile and access view routes  
+- Verified end-to-end access grants via MQ  
+
+### Started Date: July 7, 2025  
+### Target Completion Date: July 7, 2025  
+### Finished Date: July 7, 2025  
+
+### Summary of individual contribution  
+- Cleaned and finalized `grant_access.php`, `sitters.php`, and profile files  
+- Validated end-to-end sitter access workflows using mock users  
+- Merged active code branches and eliminated merge conflict residue  
+- Updated `worker.php` with `grant_dog_access`, `list_sitters`, and sitter-related handlers  
+- Added strict `isOwner()` checks and verified access control flows  
 
 ### Noteworthy Learnings and resource links  
-- Service file best practices: https://www.digitalocean.com/community/tutorials/how-to-use-systemctl  
-- RabbitMQ durability settings: https://www.rabbitmq.com/queues.html  
-- Discovered importance of `Wants=network-online.target`  
-- Learned effective use of `journalctl` for debugging  
-- Confirmed value of `RestartSec` for staggered recovery  
+- Resolved real-world merge conflicts: learned Git rebase vs. merge priorities  
+- Explored `htmlspecialchars()` for safe UI output  
+- Debugged multi-parameter `bind_param()` behavior with `null` values  
+- Relearned proper use of PHP's optional chaining (`??`) for fallback defaults  
+- Git merge strategies: https://www.atlassian.com/git/tutorials/using-branches/merge-strategy  
+- PHP `bind_param` type definitions: https://www.php.net/manual/en/mysqli-stmt.bind-param.php  
 
 ### Problems/Difficulties Encountered  
-- Intermittent queue connection drops during testing  
-- Permission conflicts with PHP consumer scripts  
-- VM clock sync issues affecting timestamps  
-- Service dependency resolution challenges  
-- Audio sync issues during recording  
+- Merge conflicts between `define-mvp` and `implement-profiles` branches  
+- Misalignment between expected sitter schema and database responses  
+- Conflicting navbar links from different role-check implementations  
+- Sitter ID mismatch causing access logic to silently fail  
+- Race conditions with session vs. payload validation  
+- Auto-formatting cluttered git diffs during final PR  
 
 ### Positive Shoutout to Team Member(s)  
-- Filip: Developed the robust api_consumer.php script and perfected its .service file configuration  
-- Jonathan: Set up comprehensive test consumers on node VMs that revealed critical timing issues  
-- Chris: Identified and resolved queue durability mismatches that prevented message persistence  
-- Antonio: Verified all service reboot scenarios and documented startup status checks  
-- Jerry: Orchestrated multi-VM testing that ensured cross-environment stability  
+- Filip: Caught and fixed an escaping issue in the sitter listing UI  
+- Jonathan: Validated that merged profile and sitter views didn’t break legacy routes  
+- Chris: Helped untangle merge conflicts and reviewed the final `worker.php` switch-case logic  
+- Antonio: Rewrote malformed MQ responses for sitter profiles and tested all response paths  
+- Jerry: Triggered `grant_access` end-to-end from UI and confirmed MQ handler success  
 
 ### What can be improved individually?  
-- Earlier adoption of structured logging  
-- More frequent commit atomicity  
-- Better pre-testing of recording setup  
-- More proactive documentation updates  
+- Shorter, focused commits during multi-file merges  
+- Earlier review of existing auth role check logic  
+- More disciplined testing of edge cases (e.g., no sitters, expired access)  
 
 ### What can be improved as a team?  
-- Standardized VM configurations earlier  
-- Shared debugging notes more systematically  
-- Allocated more buffer time for recording  
-- Implemented pair testing for critical components  
+- Align route file naming across branches before merging  
+- Reuse more UI components to prevent duplicate logic (e.g., sitter display card)  
+- Standardize `auth.php` logic for role checks in one place  
+- Better coordination of live test data vs mock data during demos  
