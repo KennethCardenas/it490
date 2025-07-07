@@ -1,28 +1,28 @@
-<?php include_once '../header.php'; ?>
+<?php
+include_once '../includes/mq_client.php';
+include_once '../header.php';
+
+// Fetch sitters from MQ
+$payload = [ "type" => "get_sitters" ];
+$response = sendMessage($payload);
+$sitters = $response['sitters'] ?? [];
+?>
 
 <div class="container mt-4">
     <h2 class="text-center text-success">Find a Dog Sitter</h2>
 
     <div class="row mt-3">
-        <div class="col-md-6">
-            <div class="card p-3 shadow-sm mb-4">
-                <h4>Emily R.</h4>
-                <p><strong>Availability:</strong> Weekdays after 5PM</p>
-                <p><strong>Rate:</strong> $25/hr</p>
-                <p><strong>Experience:</strong> Special needs pets, large breeds</p>
-                <button class="btn btn-primary">View Profile</button>
+        <?php foreach ($sitters as $sitter): ?>
+            <div class="col-md-6">
+                <div class="card p-3 shadow-sm mb-4">
+                    <h4><?= htmlspecialchars($sitter['username']) ?></h4>
+                    <p><strong>Availability:</strong> <?= htmlspecialchars($sitter['availability']) ?></p>
+                    <p><strong>Rate:</strong> $<?= htmlspecialchars($sitter['rate']) ?>/hr</p>
+                    <p><strong>Experience:</strong> <?= htmlspecialchars($sitter['bio']) ?></p>
+                    <a href="sitter-profile.php?id=<?= urlencode($sitter['sitter_id']) ?>" class="btn btn-primary">View Profile</a>
+                </div>
             </div>
-        </div>
-
-        <div class="col-md-6">
-            <div class="card p-3 shadow-sm mb-4">
-                <h4>Jake T.</h4>
-                <p><strong>Availability:</strong> Weekends only</p>
-                <p><strong>Rate:</strong> $30/hr</p>
-                <p><strong>Experience:</strong> Puppy training</p>
-                <button class="btn btn-primary">View Profile</button>
-            </div>
-        </div>
+        <?php endforeach; ?>
     </div>
 </div>
 

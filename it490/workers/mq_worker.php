@@ -91,6 +91,49 @@ $callback = function ($msg) use ($channel, $conn) {
                 }
                 break;
 
+                case 'get_sitter_dogs':
+    if (empty($payload['user_id'])) {
+        $response['message'] = "Missing user ID";
+        break;
+    }
+
+    $stmt = $conn->prepare("SELECT s.id AS sitter_id FROM SITTERS s WHERE s.user_id = ?");
+    $stmt->bind_param("i", $payload['user_id']);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result->num_rows === 0) {
+        $response['message'] = "Sitter not found";
+        break;
+    }
+
+    $sitterId = $result->fetch_assoc()['sitter_id'];
+
+    $stmt = $conn->prepare("SELECT d.name, d.breed, d.age, da.instructions, da.start_date, da.end_date
+                            FROM DOG_ACCESS da
+                            JOIN DOGS d ON da.dog_id = d.id
+                            WHERE da.sitter_id = ?");
+    $stmt->bind_param("i", $sitterId);
+    $stmt->execute();
+    $dogResult = $stmt->get_result();
+
+    $dogs = [];
+    while ($row = $dogResult->fetch_assoc()) {
+        $dogs[] = [
+            'name' => $row['name'],
+            'breed' => $row['breed'],
+            'age' => $row['age'],
+            'instructions' => $row['instructions'],
+            'start_date' => $row['start_date'],
+            'end_date' => $row['end_date']
+        ];
+    }
+
+    $response = [
+        'status' => 'success',
+        'dogs' => $dogs
+    ];
+    break;
+
             case 'register':
                 $duplicateErrors = checkDuplicateCredentials($conn, $payload['username'], $payload['email']);
                 if (!empty($duplicateErrors)) {
