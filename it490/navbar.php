@@ -43,6 +43,12 @@
                             <span>My Dogs</span>
                         </a>
                         <?php endif; ?>
+                        <?php if (hasRole('user')): ?>
+                        <a href="owner-profile.php" class="nav-link">
+                            <i class="fas fa-paw"></i> 
+                            <span>Owner Profile</span>
+                        </a>
+                        <?php endif; ?>
                         <a href="logout.php" class="nav-link">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Logout</span>
