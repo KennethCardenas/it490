@@ -13,7 +13,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'name' => trim($_POST['name']),
         'breed' => trim($_POST['breed']),
         'age' => (int)($_POST['age'] ?? 0),
-        'notes' => trim($_POST['notes'] ?? '')
+        'notes' => trim($_POST['notes'] ?? ''),
+        'care_instructions' => trim($_POST['care_instructions'] ?? '')
     ];
     $resp = sendMessage($payload);
     if (($resp['status'] ?? '') === 'success') {
@@ -37,7 +38,10 @@ $dogs = ($dogResp['status'] ?? '') === 'success' ? ($dogResp['dogs'] ?? []) : []
     <?php endif; ?>
     <ul>
     <?php foreach ($dogs as $dog): ?>
-        <li><?= htmlspecialchars($dog['name']) ?> (<?= htmlspecialchars($dog['breed']) ?>)</li>
+        <li>
+            <?= htmlspecialchars($dog['name']) ?> (<?= htmlspecialchars($dog['breed']) ?>)
+            <a href="dog_profile.php?id=<?= $dog['id'] ?>">Edit</a>
+        </li>
     <?php endforeach; ?>
     </ul>
     <h3>Add Dog</h3>
@@ -57,6 +61,10 @@ $dogs = ($dogResp['status'] ?? '') === 'success' ? ($dogResp['dogs'] ?? []) : []
         <div class="form-group">
             <label>Notes</label>
             <textarea name="notes"></textarea>
+        </div>
+        <div class="form-group">
+            <label>Care Instructions</label>
+            <textarea name="care_instructions"></textarea>
         </div>
         <button type="submit">Add Dog</button>
     </form>
