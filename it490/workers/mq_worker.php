@@ -2,8 +2,8 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../api/connect.php';
 
-use PhpAmqpLib\\Connection\\AMQPStreamConnection;
-use PhpAmqpLib\\Message\\AMQPMessage;
+use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Message\AMQPMessage;
 
 define('PASSWORD_BCRYPT_COST', 12);
 
@@ -58,12 +58,7 @@ $callback = function ($msg) use ($channel, $conn) {
     try {
         $payload = json_decode($msg->body, true);
         $response = ['status' => 'error', 'message' => 'Unknown action'];
-<<<<<<< HEAD
-        
-        echo " [x] Processing: " . ($payload['type'] ?? 'unknown') . "\\n";
-=======
         echo " [x] Processing: " . ($payload['type'] ?? 'unknown') . "\n";
->>>>>>> 4c3011c90e950b90d53b99920ba46c83d5017aa0
 
         switch ($payload['type'] ?? '') {
             case 'login':
@@ -173,6 +168,31 @@ $callback = function ($msg) use ($channel, $conn) {
                 }
                 break;
 
+            case 'verify_user':
+                $query = "SELECT id, username, email FROM USERS WHERE username = ? AND email = ?";
+                $stmt = $conn->prepare($query);
+                $stmt->bind_param("ss", $payload['username'], $payload['email']);
+                $stmt->execute();
+                $result = $stmt->get_result();
+
+                if ($result->num_rows === 1) {
+                    $user = $result->fetch_assoc();
+                    $response = [
+                        'status' => 'success',
+                        'message' => 'User verified successfully',
+                        'user' => [
+                            'id' => $user['id'],
+                            'username' => $user['username'],
+                            'email' => $user['email']
+                        ]
+                    ];
+                    echo " [+] User verified: {$user['username']}\\n";
+                } else {
+                    $response['message'] = "User not found or username/email combination is incorrect";
+                    echo " [-] User verification failed\\n";
+                }
+                break;
+
             case 'password_reset':
                 $response['message'] = "Password reset functionality not yet implemented";
                 echo " [?] Password reset requested\\n";
@@ -218,14 +238,10 @@ try {
         $channel->wait();
     }
 } catch (Exception $e) {
-<<<<<<< HEAD
-    echo "Channel error: " . $e->getMessage() . "\\n";
+    echo "Channel error: " . $e->getMessage() . "\n";
     $channel->close();
     $connection->close();
     exit(1);
-=======
-    echo "Channel error: " . $e->getMessage() . "\n";
->>>>>>> 4c3011c90e950b90d53b99920ba46c83d5017aa0
 }
 
 $channel->close();
