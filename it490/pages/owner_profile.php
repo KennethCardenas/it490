@@ -2,7 +2,7 @@
 include_once __DIR__ . '/../auth.php';
 requireAuth();
 
-// Resolved: use isOwner() to restrict access appropriately
+// Restrict access to owners only
 if (!isOwner()) {
     echo 'Access denied';
     exit();

@@ -3,7 +3,7 @@ include_once __DIR__ . '/../auth.php';
 requireAuth();
 include_once __DIR__ . '/../includes/mq_client.php';
 
-// Resolved conflict: isOwner() makes more sense for owner-controlled access
+// Restrict access to owners
 if (!isOwner()) {
     echo 'Access denied';
     exit();
@@ -11,13 +11,20 @@ if (!isOwner()) {
 
 $user = $_SESSION['user'];
 $sitterId = (int)($_GET['sitter_id'] ?? 0);
-$dogsResp = sendMessage(['type' => 'list_dogs', 'owner_id' => $user['id']]);
+
+// Fetch owner’s dogs
+$dogsResp = sendMessage([
+    'type' => 'list_dogs',
+    'owner_id' => $user['id']
+]);
+
 $dogs = ($dogsResp['status'] ?? '') === 'success' ? ($dogsResp['dogs'] ?? []) : [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $payload = [
         'type' => 'grant_dog_access',
         'dog_id' => (int)$_POST['dog_id'],
+        'owner_id' => $user['id'],
         'sitter_id' => $sitterId,
         'access_level' => $_POST['access_level'] ?? 'viewer',
         'start_date' => $_POST['start_date'] ?? null,
@@ -27,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $msg = ($r['status'] ?? '') === 'success' ? 'Access granted' : 'Failed';
 }
 ?>
+
 <?php $title = 'Grant Access'; include_once __DIR__ . '/../header.php'; ?>
 <div class="profile-container">
     <h2>Grant Access</h2>
@@ -36,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <form method="POST">
         <div class="form-group">
             <label>Dog</label>
-            <select name="dog_id">
+            <select name="dog_id" required>
                 <?php foreach ($dogs as $d): ?>
                     <option value="<?= $d['id'] ?>"><?= htmlspecialchars($d['name']) ?></option>
                 <?php endforeach; ?>
