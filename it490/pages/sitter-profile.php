@@ -1,6 +1,6 @@
 <?php
 include_once '../header.php';
-require_once '../api/connect.php';
+include_once '../includes/mq_client.php';
 
 $sitter_id = $_GET['id'] ?? null;
 if (!$sitter_id) {
@@ -9,54 +9,26 @@ if (!$sitter_id) {
     exit();
 }
 
-// Fetch sitter info
-$stmt = $conn->prepare("SELECT u.username, s.bio, s.rate, s.experience_years
-                        FROM SITTERS s
-                        JOIN USERS u ON s.user_id = u.id
-                        WHERE s.id = ?");
-$stmt->bind_param("i", $sitter_id);
-$stmt->execute();
-$sitter_result = $stmt->get_result();
+// Build payload for MQ
+$payload = [
+    'type' => 'get_sitter_profile',
+    'sitter_id' => (int)$sitter_id
+];
 
-if ($sitter_result->num_rows === 0) {
-    echo "<p>Sitter not found.</p>";
+// Send message to RabbitMQ
+$response = sendMessage($payload);
+
+// Check response
+if (!isset($response['status']) || $response['status'] !== 'success') {
+    echo "<p>Error: " . htmlspecialchars($response['message'] ?? 'Unknown error') . "</p>";
     include_once '../footer.php';
     exit();
 }
 
-$sitter = $sitter_result->fetch_assoc();
-
-// Fetch assigned dogs
-$stmt = $conn->prepare("SELECT d.name, d.breed, d.age
-                        FROM DOG_ACCESS da
-                        JOIN DOGS d ON da.dog_id = d.id
-                        WHERE da.sitter_id = ?");
-$stmt->bind_param("i", $sitter_id);
-$stmt->execute();
-$dogs_result = $stmt->get_result();
-
-$dogs = [];
-while ($dog = $dogs_result->fetch_assoc()) {
-    $dogs[] = $dog;
-}
-
-// Fetch dog activity logs
-$stmt = $conn->prepare("SELECT dl.entry, dl.created_at
-                        FROM DOG_ACCESS da
-                        JOIN DOG_LOGS dl ON da.dog_id = dl.dog_id
-                        WHERE da.sitter_id = ?
-                        ORDER BY dl.created_at DESC");
-$stmt->bind_param("i", $sitter_id);
-$stmt->execute();
-$logs_result = $stmt->get_result();
-
-$logs = [];
-while ($log = $logs_result->fetch_assoc()) {
-    $logs[] = [
-        'entry' => $log['entry'],
-        'date' => date('m/d/Y', strtotime($log['created_at']))
-    ];
-}
+// Extract data from response
+$sitter = $response['sitter'];
+$dogs = $response['dogs'];
+$logs = $response['logs'];
 ?>
 
 <h2 style="text-align:center; color:#4CAF50;">Sitter Profile: <?= htmlspecialchars($sitter['username']) ?></h2>
@@ -68,18 +40,26 @@ while ($log = $logs_result->fetch_assoc()) {
     <p><strong>Bio:</strong> <?= htmlspecialchars($sitter['bio']) ?></p>
 
     <h3>Assigned Dogs</h3>
-    <ul>
-        <?php foreach ($dogs as $dog): ?>
-            <li><?= htmlspecialchars($dog['name']) ?> – <?= htmlspecialchars($dog['breed']) ?> – Age <?= htmlspecialchars($dog['age']) ?></li>
-        <?php endforeach; ?>
-    </ul>
+    <?php if (!empty($dogs)): ?>
+        <ul>
+            <?php foreach ($dogs as $dog): ?>
+                <li><?= htmlspecialchars($dog['name']) ?> – <?= htmlspecialchars($dog['breed']) ?> – Age <?= htmlspecialchars($dog['age']) ?></li>
+            <?php endforeach; ?>
+        </ul>
+    <?php else: ?>
+        <p>No dogs currently assigned.</p>
+    <?php endif; ?>
 
     <h3>Activity Log</h3>
-    <ul>
-        <?php foreach ($logs as $log): ?>
-            <li><?= $log['date'] ?> – <?= htmlspecialchars($log['entry']) ?></li>
-        <?php endforeach; ?>
-    </ul>
+    <?php if (!empty($logs)): ?>
+        <ul>
+            <?php foreach ($logs as $log): ?>
+                <li><?= htmlspecialchars($log['date']) ?> – <?= htmlspecialchars($log['entry']) ?></li>
+            <?php endforeach; ?>
+        </ul>
+    <?php else: ?>
+        <p>No recent activity logs.</p>
+    <?php endif; ?>
 </div>
 
 <style>
