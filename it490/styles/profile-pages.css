@@ -1,0 +1,44 @@
+/* Styles for dog and sitter related pages */
+.profile-container ul {
+  list-style: none;
+  padding: 0;
+}
+
+.profile-container li {
+  margin-bottom: 0.5rem;
+}
+
+.profile-container a {
+  margin-left: 0.5rem;
+  color: #0077cc;
+  text-decoration: none;
+}
+
+.profile-container a:hover {
+  text-decoration: underline;
+}
+
+.profile-container h2 {
+  margin-bottom: 1rem;
+}
+
+.profile-container form {
+  margin-top: 1rem;
+}
+
+.profile-container .form-group {
+  margin-bottom: 1rem;
+}
+
+.profile-container button {
+  background-color: #0077cc;
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.profile-container button:hover {
+  background-color: #005aa3;
+}
