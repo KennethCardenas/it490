@@ -29,6 +29,20 @@
                             <i class="fas fa-dog"></i>
                             <span>Dogs</span>
                         </a>
+                        <a href="sitters.php" class="nav-link">
+                            <i class="fas fa-search"></i>
+                            <span>Sitters</span>
+                        </a>
+                        <?php if (hasRole('sitter')): ?>
+                        <a href="sitter_profile.php" class="nav-link">
+                            <i class="fas fa-id-badge"></i>
+                            <span>Sitter Profile</span>
+                        </a>
+                        <a href="active_dogs.php" class="nav-link">
+                            <i class="fas fa-list"></i>
+                            <span>My Dogs</span>
+                        </a>
+                        <?php endif; ?>
                         <a href="logout.php" class="nav-link">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Logout</span>
