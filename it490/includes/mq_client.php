@@ -59,6 +59,64 @@ function sendMessage(array $payload): array {
             }
             break;
 
+        case 'get_dog':
+            if (empty($payload['dog_id'])) {
+                throw new InvalidArgumentException('dog_id is required');
+            }
+            break;
+
+        case 'update_dog':
+            foreach (['dog_id','owner_id','name','breed'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
+                }
+            }
+            break;
+
+        case 'get_sitter_profile':
+            if (empty($payload['user_id'])) {
+                throw new InvalidArgumentException('user_id is required');
+            }
+            break;
+
+        case 'update_sitter_profile':
+            if (empty($payload['user_id'])) {
+                throw new InvalidArgumentException('user_id is required');
+            }
+            break;
+
+        case 'list_sitters':
+            // no additional validation
+            break;
+
+        case 'grant_dog_access':
+            foreach (['dog_id','sitter_id','owner_id'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
+                }
+            }
+            break;
+
+        case 'list_active_dogs':
+            if (empty($payload['sitter_id'])) {
+                throw new InvalidArgumentException('sitter_id is required');
+            }
+            break;
+
+        case 'record_activity':
+            foreach (['dog_id','sitter_id','description'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
+                }
+            }
+            break;
+
+        case 'list_activities':
+            if (empty($payload['dog_id'])) {
+                throw new InvalidArgumentException('dog_id is required');
+            }
+            break;
+
         default:
             throw new InvalidArgumentException("Unsupported message type: {$payload['type']}");
     }

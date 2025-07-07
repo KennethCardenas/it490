@@ -62,6 +62,16 @@ function hasRole(string $role): bool {
     return isset($_SESSION['user']['role']) && $_SESSION['user']['role'] === $role;
 }
 
+// Convenience check for owner role (some databases may use 'owner' or 'user')
+function isOwner(): bool {
+    return hasRole('user') || hasRole('owner');
+}
+
+// Convenience check for sitter role
+function isSitter(): bool {
+    return hasRole('sitter');
+}
+
 // Convenience check for admin role
 function isAdmin(): bool {
     return hasRole('admin');
