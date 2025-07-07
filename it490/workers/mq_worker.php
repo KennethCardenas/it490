@@ -125,7 +125,61 @@ $callback = function ($msg) use ($channel, $conn) {
                     echo " [-] Registration failed: " . $response['message'] . "\\n";
                 }
                 break;
+            case 'get_sitters':
+    $query = "
+        SELECT 
+            s.id AS sitter_id, 
+            u.username, 
+            s.rate, 
+            s.availability, 
+            s.bio,
+            d.name AS dog_name,
+            d.breed,
+            a.activity_date,
+            a.notes
+        FROM SITTERS s
+        JOIN USERS u ON s.user_id = u.id
+        LEFT JOIN DOGS d ON d.sitter_id = s.id
+        LEFT JOIN ACTIVITIES a ON a.dog_id = d.id
+        ORDER BY s.id, d.id, a.activity_date DESC
+    ";
+    $result = $conn->query($query);
 
+    $sitters = [];
+    while ($row = $result->fetch_assoc()) {
+        $sid = $row['sitter_id'];
+        if (!isset($sitters[$sid])) {
+            $sitters[$sid] = [
+                'username' => $row['username'],
+                'rate' => $row['rate'],
+                'availability' => $row['availability'],
+                'bio' => $row['bio'],
+                'dogs' => [],
+                'logs' => []
+            ];
+        }
+
+        if (!empty($row['dog_name'])) {
+            $sitters[$sid]['dogs'][] = [
+                'name' => $row['dog_name'],
+                'breed' => $row['breed']
+            ];
+        }
+
+        if (!empty($row['activity_date']) && !empty($row['notes'])) {
+            $sitters[$sid]['logs'][] = [
+                'date' => $row['activity_date'],
+                'entry' => $row['notes']
+            ];
+        }
+    }
+
+    $response = [
+        'status' => 'success',
+        'sitters' => array_values($sitters)
+    ];
+    echo " [+] Sent sitter data (" . count($sitters) . " total)\n";
+    break;
             case 'update_profile':
                 if (empty($payload['user_id'])) {
                     $response['message'] = "User ID required";
