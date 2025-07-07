@@ -2,8 +2,8 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../api/connect.php';
 
-use PhpAmqpLib\Connection\AMQPStreamConnection;
-use PhpAmqpLib\Message\AMQPMessage;
+use PhpAmqpLib\\Connection\\AMQPStreamConnection;
+use PhpAmqpLib\\Message\\AMQPMessage;
 
 define('PASSWORD_BCRYPT_COST', 12);
 
@@ -49,50 +49,6 @@ try {
     exit(1);
 }
 
-function formatBreed(string $breed): string {
-    $breedFormatted = strtolower(str_replace(' ', '', $breed));
-    if (strpos($breedFormatted, '-') !== false) {
-        $breedFormatted = str_replace('-', '/', $breedFormatted);
-    }
-    return $breedFormatted;
-}
-
-function getCachedImageUrl(mysqli $conn, string $breed): ?string {
-    $breedFormatted = formatBreed($breed);
-    $stmt = $conn->prepare("SELECT image_url, UNIX_TIMESTAMP(cached_at) AS cached_at_ts FROM breed_image_cache WHERE breed = ?");
-    $stmt->bind_param('s', $breedFormatted);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($row = $result->fetch_assoc()) {
-        $cacheDuration = 24 * 60 * 60; // 24h cache
-        if ((time() - $row['cached_at_ts']) < $cacheDuration) {
-            return $row['image_url'];
-        }
-    }
-    return null;
-}
-
-function cacheImageUrl(mysqli $conn, string $breed, string $imageUrl): void {
-    $breedFormatted = formatBreed($breed);
-    $stmt = $conn->prepare("INSERT INTO breed_image_cache (breed, image_url, cached_at) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE image_url = VALUES(image_url), cached_at = NOW()");
-    $stmt->bind_param('ss', $breedFormatted, $imageUrl);
-    $stmt->execute();
-}
-
-function fetchDogImageFromApi(string $breed): string {
-    $breedFormatted = strtolower(str_replace(' ', '', $breed));
-    $breedFormatted = str_replace('-', '/', $breedFormatted);
-    $url = "https://dog.ceo/api/breed/$breedFormatted/images/random";
-
-    $json = @file_get_contents($url);
-    if (!$json) {
-        return 'no image';
-    }
-
-    $data = json_decode($json, true);
-    return $data['message'] ?? 'no image';
-}
-
 $channel = $connection->channel();
 $channel->queue_declare('user_request_queue', false, false, false, false);
 
@@ -102,7 +58,12 @@ $callback = function ($msg) use ($channel, $conn) {
     try {
         $payload = json_decode($msg->body, true);
         $response = ['status' => 'error', 'message' => 'Unknown action'];
+<<<<<<< HEAD
+        
+        echo " [x] Processing: " . ($payload['type'] ?? 'unknown') . "\\n";
+=======
         echo " [x] Processing: " . ($payload['type'] ?? 'unknown') . "\n";
+>>>>>>> 4c3011c90e950b90d53b99920ba46c83d5017aa0
 
         switch ($payload['type'] ?? '') {
             case 'login':
@@ -212,31 +173,6 @@ $callback = function ($msg) use ($channel, $conn) {
                 }
                 break;
 
-            case 'verify_user':
-                $query = "SELECT id, username, email FROM USERS WHERE username = ? AND email = ?";
-                $stmt = $conn->prepare($query);
-                $stmt->bind_param("ss", $payload['username'], $payload['email']);
-                $stmt->execute();
-                $result = $stmt->get_result();
-
-                if ($result->num_rows === 1) {
-                    $user = $result->fetch_assoc();
-                    $response = [
-                        'status' => 'success',
-                        'message' => 'User verified successfully',
-                        'user' => [
-                            'id' => $user['id'],
-                            'username' => $user['username'],
-                            'email' => $user['email']
-                        ]
-                    ];
-                    echo " [+] User verified: {$user['username']}\\n";
-                } else {
-                    $response['message'] = "User not found or username/email combination is incorrect";
-                    echo " [-] User verification failed\\n";
-                }
-                break;
-
             case 'password_reset':
                 $response['message'] = "Password reset functionality not yet implemented";
                 echo " [?] Password reset requested\\n";
@@ -251,49 +187,6 @@ $callback = function ($msg) use ($channel, $conn) {
                     echo " [-] Logout failed: Missing user ID\n";
                 }
                 break;
-
-            case 'add_dog':
-                $owner_id = $payload['owner_id'] ?? null;
-                $name     = trim($payload['name'] ?? '');
-                $breed    = trim($payload['breed'] ?? '');
-                $age      = (int)($payload['age'] ?? 0);
-                $notes    = trim($payload['notes'] ?? '');
-
-                if (!$owner_id || !$name || !$breed) {
-                    $response = ['status' => 'error', 'message' => 'Missing required fields'];
-                    break;
-                }
-
-                $image_url = fetchDogImageFromApi($breed);
-
-                $stmt = $conn->prepare("INSERT INTO DOGS (owner_id, name, breed, age, notes, image_url) VALUES (?, ?, ?, ?, ?, ?)");
-                $stmt->bind_param("ississ", $owner_id, $name, $breed, $age, $notes, $image_url);
-
-                if ($stmt->execute()) {
-                    $response = [
-                        'status' => 'success',
-                        'dog_id' => $stmt->insert_id
-                    ];
-                    echo " [+] Dog added: $name ($breed)\n";
-                } else {
-                    $response = ['status' => 'error', 'message' => 'DB error: ' . $stmt->error];
-                    echo " [-] Failed to add dog: $name - " . $stmt->error . "\n";
-                }
-                break;
-
-    $image_url = getCachedImageUrl($conn, $breed);
-
-    if (!$image_url) {
-        $image_url = fetchDogImageFromApi($breed);
-        cacheImageUrl($conn, $breed, $image_url);
-    }
-
-    $response = [
-        'status' => 'success',
-        'image_url' => $image_url
-    ];
-    echo " [+] Resolved image for breed '{$breed}' -> $image_url\n";
-    break;
 
             default:
                 $response['message'] = "Unsupported action type";
@@ -325,10 +218,14 @@ try {
         $channel->wait();
     }
 } catch (Exception $e) {
-    echo "Channel error: " . $e->getMessage() . "\n";
+<<<<<<< HEAD
+    echo "Channel error: " . $e->getMessage() . "\\n";
     $channel->close();
     $connection->close();
     exit(1);
+=======
+    echo "Channel error: " . $e->getMessage() . "\n";
+>>>>>>> 4c3011c90e950b90d53b99920ba46c83d5017aa0
 }
 
 $channel->close();

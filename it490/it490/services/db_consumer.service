@@ -1,0 +1,14 @@
+[Unit]
+Description=Database MQ Consumer Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/php /home/kac123/it490/consumers/db_consumer.php
+Restart=always
+RestartSec=5
+User=kac63
+WorkingDirectory=/home/kac123/it490
+
+[Install]
+WantedBy=multi-user.target
