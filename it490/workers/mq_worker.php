@@ -2,8 +2,8 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../api/connect.php';
 
-use PhpAmqpLib\\Connection\\AMQPStreamConnection;
-use PhpAmqpLib\\Message\\AMQPMessage;
+use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Message\AMQPMessage;
 
 define('PASSWORD_BCRYPT_COST', 12);
 
@@ -58,12 +58,7 @@ $callback = function ($msg) use ($channel, $conn) {
     try {
         $payload = json_decode($msg->body, true);
         $response = ['status' => 'error', 'message' => 'Unknown action'];
-<<<<<<< HEAD
-        
-        echo " [x] Processing: " . ($payload['type'] ?? 'unknown') . "\\n";
-=======
         echo " [x] Processing: " . ($payload['type'] ?? 'unknown') . "\n";
->>>>>>> 4c3011c90e950b90d53b99920ba46c83d5017aa0
 
         switch ($payload['type'] ?? '') {
             case 'login':
@@ -125,61 +120,7 @@ $callback = function ($msg) use ($channel, $conn) {
                     echo " [-] Registration failed: " . $response['message'] . "\\n";
                 }
                 break;
-            case 'get_sitters':
-    $query = "
-        SELECT 
-            s.id AS sitter_id, 
-            u.username, 
-            s.rate, 
-            s.availability, 
-            s.bio,
-            d.name AS dog_name,
-            d.breed,
-            a.activity_date,
-            a.notes
-        FROM SITTERS s
-        JOIN USERS u ON s.user_id = u.id
-        LEFT JOIN DOGS d ON d.sitter_id = s.id
-        LEFT JOIN ACTIVITIES a ON a.dog_id = d.id
-        ORDER BY s.id, d.id, a.activity_date DESC
-    ";
-    $result = $conn->query($query);
 
-    $sitters = [];
-    while ($row = $result->fetch_assoc()) {
-        $sid = $row['sitter_id'];
-        if (!isset($sitters[$sid])) {
-            $sitters[$sid] = [
-                'username' => $row['username'],
-                'rate' => $row['rate'],
-                'availability' => $row['availability'],
-                'bio' => $row['bio'],
-                'dogs' => [],
-                'logs' => []
-            ];
-        }
-
-        if (!empty($row['dog_name'])) {
-            $sitters[$sid]['dogs'][] = [
-                'name' => $row['dog_name'],
-                'breed' => $row['breed']
-            ];
-        }
-
-        if (!empty($row['activity_date']) && !empty($row['notes'])) {
-            $sitters[$sid]['logs'][] = [
-                'date' => $row['activity_date'],
-                'entry' => $row['notes']
-            ];
-        }
-    }
-
-    $response = [
-        'status' => 'success',
-        'sitters' => array_values($sitters)
-    ];
-    echo " [+] Sent sitter data (" . count($sitters) . " total)\n";
-    break;
             case 'update_profile':
                 if (empty($payload['user_id'])) {
                     $response['message'] = "User ID required";
@@ -224,6 +165,31 @@ $callback = function ($msg) use ($channel, $conn) {
                 } else {
                     $response['message'] = "Update failed: " . $conn->error;
                     echo " [-] Profile update failed: " . $response['message'] . "\\n";
+                }
+                break;
+
+            case 'verify_user':
+                $query = "SELECT id, username, email FROM USERS WHERE username = ? AND email = ?";
+                $stmt = $conn->prepare($query);
+                $stmt->bind_param("ss", $payload['username'], $payload['email']);
+                $stmt->execute();
+                $result = $stmt->get_result();
+
+                if ($result->num_rows === 1) {
+                    $user = $result->fetch_assoc();
+                    $response = [
+                        'status' => 'success',
+                        'message' => 'User verified successfully',
+                        'user' => [
+                            'id' => $user['id'],
+                            'username' => $user['username'],
+                            'email' => $user['email']
+                        ]
+                    ];
+                    echo " [+] User verified: {$user['username']}\\n";
+                } else {
+                    $response['message'] = "User not found or username/email combination is incorrect";
+                    echo " [-] User verification failed\\n";
                 }
                 break;
 
@@ -272,14 +238,10 @@ try {
         $channel->wait();
     }
 } catch (Exception $e) {
-<<<<<<< HEAD
-    echo "Channel error: " . $e->getMessage() . "\\n";
+    echo "Channel error: " . $e->getMessage() . "\n";
     $channel->close();
     $connection->close();
     exit(1);
-=======
-    echo "Channel error: " . $e->getMessage() . "\n";
->>>>>>> 4c3011c90e950b90d53b99920ba46c83d5017aa0
 }
 
 $channel->close();
