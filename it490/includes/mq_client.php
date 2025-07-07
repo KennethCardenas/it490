@@ -106,8 +106,14 @@ function sendMessage(array $payload): array {
             });
 
         while (!$response && $timeout < $maxTimeout) {
-            $channel->wait(null, false, 5); // Wait for 5 seconds max
-            $timeout += 5;
+            try {
+                $channel->wait(null, false, 1); // Wait for 1 second max
+                $timeout += 1;
+            } catch (Exception $e) {
+                // Timeout occurred during wait, continue the loop
+                $timeout += 1;
+                continue;
+            }
         }
 
         if (!$response) {
