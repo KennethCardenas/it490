@@ -74,9 +74,10 @@ $callback = function ($msg) use ($channel, $conn) {
         $payload = json_decode($msg->body, true);
         $response = ['status' => 'error', 'message' => 'Unknown action'];
 
-        echo " [x] Processing: " . ($payload['type'] ?? 'unknown') . "\n";
+        $type = isset($payload['type']) ? trim($payload['type']) : '';
+        echo " [x] Processing: " . ($type ?: 'unknown') . "\n";
 
-        switch ($payload['type'] ?? '') {
+        switch ($type) {
             case 'login':
                 $credential = validateEmailOrUsername($payload['username']);
                 $query = "SELECT id, username, email, role, password FROM USERS WHERE {$credential['field']} = ?";
@@ -209,10 +210,11 @@ $callback = function ($msg) use ($channel, $conn) {
                 break;
 
             case 'add_dog':
-                $stmt = $conn->prepare("INSERT INTO DOGS (owner_id, name, breed, age, notes, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
+                $stmt = $conn->prepare("INSERT INTO DOGS (owner_id, name, breed, age, notes, care_instructions, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
                 $age = $payload['age'] ?? null;
                 $notes = $payload['notes'] ?? '';
-                $stmt->bind_param('issis', $payload['owner_id'], $payload['name'], $payload['breed'], $age, $notes);
+                $care = $payload['care_instructions'] ?? '';
+                $stmt->bind_param('ississ', $payload['owner_id'], $payload['name'], $payload['breed'], $age, $notes, $care);
                 if ($stmt->execute()) {
                     $response = ['status'=>'success','dog_id'=>$stmt->insert_id];
                     echo " [+] Added dog {$payload['name']} for user {$payload['owner_id']}\n";
@@ -233,6 +235,142 @@ $callback = function ($msg) use ($channel, $conn) {
                 } else {
                     $response['message'] = 'Failed to fetch dogs: ' . $conn->error;
                     echo " [-] Failed to fetch dogs: {$conn->error}\n";
+                }
+                break;
+
+            case 'get_dog':
+                $stmt = $conn->prepare("SELECT id, owner_id, name, breed, age, notes, care_instructions FROM DOGS WHERE id = ?");
+                $stmt->bind_param('i', $payload['dog_id']);
+                if ($stmt->execute()) {
+                    $res = $stmt->get_result();
+                    $dog = $res->fetch_assoc();
+                    $response = ['status'=>'success','dog'=>$dog];
+                } else {
+                    $response['message'] = 'Failed to fetch dog: ' . $conn->error;
+                    echo " [-] Failed to fetch dog: {$conn->error}\n";
+                }
+                break;
+
+            case 'update_dog':
+                $stmt = $conn->prepare("UPDATE DOGS SET name=?, breed=?, age=?, notes=?, care_instructions=? WHERE id=? AND owner_id=?");
+                $age = $payload['age'] ?? null;
+                $notes = $payload['notes'] ?? '';
+                $care = $payload['care_instructions'] ?? '';
+                $stmt->bind_param('ssissii', $payload['name'], $payload['breed'], $age, $notes, $care, $payload['dog_id'], $payload['owner_id']);
+                if ($stmt->execute()) {
+                    $response = ['status'=>'success'];
+                    echo " [+] Updated dog {$payload['dog_id']}\n";
+                } else {
+                    $response['message'] = 'Failed to update dog: ' . $conn->error;
+                    echo " [-] Failed to update dog: {$conn->error}\n";
+                }
+                break;
+
+            case 'get_sitter_profile':
+                $stmt = $conn->prepare("SELECT id, user_id, bio, experience_years, rating FROM SITTERS WHERE user_id=?");
+                $stmt->bind_param('i', $payload['user_id']);
+                if ($stmt->execute()) {
+                    $res = $stmt->get_result();
+                    $profile = $res->fetch_assoc();
+                    $response = ['status'=>'success','profile'=>$profile];
+                } else {
+                    $response['message'] = 'Failed to fetch sitter profile: ' . $conn->error;
+                    echo " [-] Failed to fetch sitter profile: {$conn->error}\n";
+                }
+                break;
+
+            case 'update_sitter_profile':
+                $bio = $payload['bio'] ?? '';
+                $exp = $payload['experience_years'] ?? 0;
+                $check = $conn->prepare("SELECT id FROM SITTERS WHERE user_id=?");
+                $check->bind_param('i', $payload['user_id']);
+                $check->execute();
+                $res = $check->get_result();
+                if ($res->num_rows > 0) {
+                    $row = $res->fetch_assoc();
+                    $stmt = $conn->prepare("UPDATE SITTERS SET bio=?, experience_years=? WHERE id=?");
+                    $stmt->bind_param('sii', $bio, $exp, $row['id']);
+                } else {
+                    $stmt = $conn->prepare("INSERT INTO SITTERS (user_id, bio, experience_years) VALUES (?, ?, ?)");
+                    $stmt->bind_param('isi', $payload['user_id'], $bio, $exp);
+                }
+                if ($stmt->execute()) {
+                    $response = ['status'=>'success'];
+                    echo " [+] Sitter profile saved for user {$payload['user_id']}\n";
+                } else {
+                    $response['message'] = 'Failed to save sitter profile: ' . $conn->error;
+                    echo " [-] Failed to save sitter profile: {$conn->error}\n";
+                }
+                break;
+
+            case 'list_sitters':
+                $query = "SELECT SITTERS.id, USERS.username, SITTERS.bio, SITTERS.experience_years, SITTERS.rating FROM SITTERS JOIN USERS ON SITTERS.user_id = USERS.id";
+                $res = $conn->query($query);
+                $sitters = [];
+                if ($res) {
+                    while ($row = $res->fetch_assoc()) { $sitters[] = $row; }
+                    $response = ['status'=>'success','sitters'=>$sitters];
+                } else {
+                    $response['message'] = 'Failed to list sitters: ' . $conn->error;
+                    echo " [-] Failed to list sitters: {$conn->error}\n";
+                }
+                break;
+
+            case 'grant_dog_access':
+                $level = $payload['access_level'] ?? 'viewer';
+                $start = $payload['start_date'] ?? null;
+                $end = $payload['end_date'] ?? null;
+                $stmt = $conn->prepare("INSERT INTO DOG_ACCESS (dog_id, sitter_id, access_level, start_date, end_date) VALUES (?, ?, ?, ?, ?)");
+                $stmt->bind_param('iisss', $payload['dog_id'], $payload['sitter_id'], $level, $start, $end);
+                if ($stmt->execute()) {
+                    $response = ['status'=>'success'];
+                    echo " [+] Granted access to sitter {$payload['sitter_id']} for dog {$payload['dog_id']}\n";
+                } else {
+                    $response['message'] = 'Failed to grant access: ' . $conn->error;
+                    echo " [-] Failed to grant access: {$conn->error}\n";
+                }
+                break;
+
+            case 'list_active_dogs':
+                $stmt = $conn->prepare("SELECT D.id, D.name, D.breed, D.age, D.notes, D.care_instructions FROM DOGS D JOIN DOG_ACCESS A ON D.id=A.dog_id WHERE A.sitter_id=? AND (A.start_date IS NULL OR A.start_date <= CURDATE()) AND (A.end_date IS NULL OR A.end_date >= CURDATE())");
+                $stmt->bind_param('i', $payload['sitter_id']);
+                if ($stmt->execute()) {
+                    $res = $stmt->get_result();
+                    $dogs = [];
+                    while ($row = $res->fetch_assoc()) { $dogs[] = $row; }
+                    $response = ['status'=>'success','dogs'=>$dogs];
+                } else {
+                    $response['message'] = 'Failed to list dogs: ' . $conn->error;
+                    echo " [-] Failed to list active dogs: {$conn->error}\n";
+                }
+                break;
+
+            case 'record_activity':
+                $mood = $payload['mood'] ?? null;
+                $intensity = $payload['intensity'] ?? null;
+                $trigger = $payload['trigger_text'] ?? null;
+                $stmt = $conn->prepare("INSERT INTO ACTIVITIES (dog_id, sitter_id, description, mood, intensity, trigger_text, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
+                $stmt->bind_param('isssis', $payload['dog_id'], $payload['sitter_id'], $payload['description'], $mood, $intensity, $trigger);
+                if ($stmt->execute()) {
+                    $response = ['status'=>'success'];
+                    echo " [+] Activity recorded for dog {$payload['dog_id']}\n";
+                } else {
+                    $response['message'] = 'Failed to record activity: ' . $conn->error;
+                    echo " [-] Failed to record activity: {$conn->error}\n";
+                }
+                break;
+
+            case 'list_activities':
+                $stmt = $conn->prepare("SELECT id, sitter_id, description, mood, intensity, trigger_text, created_at FROM ACTIVITIES WHERE dog_id=? ORDER BY created_at DESC");
+                $stmt->bind_param('i', $payload['dog_id']);
+                if ($stmt->execute()) {
+                    $res = $stmt->get_result();
+                    $acts = [];
+                    while ($row = $res->fetch_assoc()) { $acts[] = $row; }
+                    $response = ['status'=>'success','activities'=>$acts];
+                } else {
+                    $response['message'] = 'Failed to list activities: ' . $conn->error;
+                    echo " [-] Failed to list activities: {$conn->error}\n";
                 }
                 break;
 

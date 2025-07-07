@@ -1,5 +1,6 @@
 <?php if (!defined('HEADER_INCLUDED')) define('HEADER_INCLUDED', true);
 $cssPath = '/it490/styles/style.css';
+$extraCssPath = '/it490/styles/profile-pages.css';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -10,6 +11,7 @@ $cssPath = '/it490/styles/style.css';
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="<?= $cssPath ?>">
+    <link rel="stylesheet" href="<?= $extraCssPath ?>">
 </head>
 <body>
 <?php include_once __DIR__ . '/navbar.php'; ?>
