@@ -44,7 +44,7 @@
                     </a>
                 <?php endif; ?>
                 <?php if (hasRole('user')): ?>
-                    <a href="owner-profile.php" class="nav-link">
+                    <a href="owner_profile.php" class="nav-link">
                         <i class="fas fa-paw"></i> 
                         <span>Owner Profile</span>
                     </a>
