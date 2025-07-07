@@ -317,18 +317,22 @@ $callback = function ($msg) use ($channel, $conn) {
                 break;
 
             case 'grant_dog_access':
+    // Validate ownership of dog before granting access
                 $check = $conn->prepare("SELECT id FROM DOGS WHERE id=? AND owner_id=?");
                 $check->bind_param('ii', $payload['dog_id'], $payload['owner_id']);
                 $check->execute();
                 $res = $check->get_result();
+
                 if ($res && $res->num_rows === 1) {
                     $level = $payload['access_level'] ?? 'viewer';
                     $start = $payload['start_date'] ?? null;
                     $end = $payload['end_date'] ?? null;
+
                     $stmt = $conn->prepare("INSERT INTO DOG_ACCESS (dog_id, sitter_id, access_level, start_date, end_date) VALUES (?, ?, ?, ?, ?)");
                     $stmt->bind_param('iisss', $payload['dog_id'], $payload['sitter_id'], $level, $start, $end);
+
                     if ($stmt->execute()) {
-                        $response = ['status'=>'success'];
+                        $response = ['status' => 'success'];
                         echo " [+] Granted access to sitter {$payload['sitter_id']} for dog {$payload['dog_id']}\n";
                     } else {
                         $response['message'] = 'Failed to grant access: ' . $conn->error;
@@ -339,6 +343,8 @@ $callback = function ($msg) use ($channel, $conn) {
                     echo " [-] Grant access denied: invalid owner for dog {$payload['dog_id']}\n";
                 }
                 break;
+
+                
 
             case 'list_active_dogs':
                 $stmt = $conn->prepare("SELECT D.id, D.name, D.breed, D.age, D.notes, D.care_instructions FROM DOGS D JOIN DOG_ACCESS A ON D.id=A.dog_id WHERE A.sitter_id=? AND (A.start_date IS NULL OR A.start_date <= CURDATE()) AND (A.end_date IS NULL OR A.end_date >= CURDATE())");

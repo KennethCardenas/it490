@@ -1,4 +1,7 @@
-<?php if (!defined('HEADER_INCLUDED')) define('HEADER_INCLUDED', true);
+<?php 
+if (!defined('HEADER_INCLUDED')) define('HEADER_INCLUDED', true);
+
+// Unified and corrected CSS paths
 $cssPath = '/it490/styles/style.css';
 $extraCssPath = '/it490/styles/profile-pages.css';
 ?>
