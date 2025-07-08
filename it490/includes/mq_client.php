@@ -45,6 +45,11 @@ function sendMessage(array $payload): array {
             }
             break;
 
+         case 'get_sitters':
+        // No validation needed
+        break;
+
+
         default:
             throw new InvalidArgumentException("Unsupported message type: {$payload['type']}");
     }
