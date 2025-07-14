@@ -7,6 +7,6 @@ BACKUP_NAME="barkbuddy_backup_$(date +%Y%m%d_%H%M%S).sql"
 BACKUP_DIR="~/deploy/backups"
 
 mkdir -p $BACKUP_DIR
-mysqldump -u $DB_USER -p$DB_PASS $DB_NAME > $BACKUP_DIR/$BACKUP_NAME && \
+mysqldump --no-tablespaces -u $DB_USER -p$DB_PASS $DB_NAME > "$BACKUP_DIR/$BACKUP_NAME" && \
 echo "[✓] Backup complete: $BACKUP_NAME" || \
-echo "[✗] Backup failed"
+echo "[x] Backup failed"
