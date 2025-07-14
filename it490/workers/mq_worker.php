@@ -91,6 +91,205 @@ $callback = function ($msg) use ($channel, $conn) {
                 }
                 break;
 
+
+                case 'get_owner_profile':
+    if (empty($payload['user_id'])) {
+        $response['message'] = "Missing user ID";
+        break;
+    }
+
+    // Fetch user basic info
+    $stmt = $conn->prepare("SELECT id, username, email, phone, address FROM USERS WHERE id = ?");
+    $stmt->bind_param("i", $payload['user_id']);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result->num_rows === 0) {
+        $response['message'] = "Owner not found";
+        break;
+    }
+
+    $owner = $result->fetch_assoc();
+
+    // Fetch owner's registered dogs
+    $stmt = $conn->prepare("SELECT name, breed, age FROM DOGS WHERE owner_id = ?");
+    $stmt->bind_param("i", $payload['user_id']);
+    $stmt->execute();
+    $dogResult = $stmt->get_result();
+
+    $dogs = [];
+    while ($row = $dogResult->fetch_assoc()) {
+        $dogs[] = [
+            'name' => $row['name'],
+            'breed' => $row['breed'],
+            'age' => $row['age']
+        ];
+    }
+
+    $response = [
+        'status' => 'success',
+        'owner' => $owner,
+        'dogs' => $dogs
+    ];
+    break;
+
+    case 'record_activity':
+    if (empty($payload['sitter']) || empty($payload['dog']) || empty($payload['activity_type'])) {
+        $response['message'] = "Missing required fields";
+        break;
+    }
+
+    // Step 1: Get sitter_id
+    $stmt = $conn->prepare("SELECT s.id FROM SITTERS s JOIN USERS u ON s.user_id = u.id WHERE u.username = ?");
+    $stmt->bind_param("s", $payload['sitter']);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result->num_rows === 0) {
+        $response['message'] = "Sitter not found";
+        break;
+    }
+    $sitter_id = $result->fetch_assoc()['id'];
+
+    // Step 2: Get dog_id
+    $stmt = $conn->prepare("SELECT id FROM DOGS WHERE name = ?");
+    $stmt->bind_param("s", $payload['dog']);
+    $stmt->execute();
+    $dogResult = $stmt->get_result();
+    if ($dogResult->num_rows === 0) {
+        $response['message'] = "Dog not found";
+        break;
+    }
+    $dog_id = $dogResult->fetch_assoc()['id'];
+
+    // Step 3: Insert into DOG_LOGS
+    $stmt = $conn->prepare("INSERT INTO DOG_LOGS (dog_id, sitter_id, entry) VALUES (?, ?, ?)");
+    $note = $payload['activity_type'] . ': ' . $payload['notes'];
+    $stmt->bind_param("iis", $dog_id, $sitter_id, $note);
+
+    if ($stmt->execute()) {
+        $response = ['status' => 'success', 'message' => 'Activity recorded'];
+        echo " [+] Activity logged for dog ID {$dog_id}\n";
+    } else {
+        $response['message'] = "Database error: " . $conn->error;
+        echo " [-] Failed to log activity\n";
+    }
+    break;
+
+
+
+
+
+
+
+
+
+case 'get_sitter_profile':
+            if (empty($payload['sitter_id'])) {
+                $response['message'] = "Missing sitter ID";
+                break;
+            }
+
+            // Get sitter info with user info
+            $stmt = $conn->prepare("SELECT u.username, s.bio, s.rate, s.experience_years
+                                    FROM SITTERS s
+                                    JOIN USERS u ON s.user_id = u.id
+                                    WHERE s.id = ?");
+            $stmt->bind_param("i", $payload['sitter_id']);
+            $stmt->execute();
+            $sitterResult = $stmt->get_result();
+
+            if ($sitterResult->num_rows === 0) {
+                $response['message'] = "Sitter not found";
+                break;
+            }
+
+            $sitter = $sitterResult->fetch_assoc();
+
+            // Get assigned dogs
+            $stmt = $conn->prepare("SELECT d.name, d.breed, d.age
+                                    FROM DOG_ACCESS da
+                                    JOIN DOGS d ON da.dog_id = d.id
+                                    WHERE da.sitter_id = ?");
+            $stmt->bind_param("i", $payload['sitter_id']);
+            $stmt->execute();
+            $dogsResult = $stmt->get_result();
+
+            $dogs = [];
+            while ($dog = $dogsResult->fetch_assoc()) {
+                $dogs[] = $dog;
+            }
+
+            // Get activity logs
+            $stmt = $conn->prepare("SELECT dl.entry, dl.created_at
+                                    FROM DOG_ACCESS da
+                                    JOIN DOG_LOGS dl ON da.dog_id = dl.dog_id
+                                    WHERE da.sitter_id = ?
+                                    ORDER BY dl.created_at DESC");
+            $stmt->bind_param("i", $payload['sitter_id']);
+            $stmt->execute();
+            $logsResult = $stmt->get_result();
+
+            $logs = [];
+            while ($log = $logsResult->fetch_assoc()) {
+                $logs[] = [
+                    'entry' => $log['entry'],
+                    'date' => date('m/d/Y', strtotime($log['created_at']))
+                ];
+            }
+
+            $response = [
+                'status' => 'success',
+                'sitter' => $sitter,
+                'dogs' => $dogs,
+                'logs' => $logs
+            ];
+            echo " [+] Sitter profile fetched\n";
+            break;
+
+
+
+                case 'get_sitter_dogs':
+    if (empty($payload['user_id'])) {
+        $response['message'] = "Missing user ID";
+        break;
+    }
+
+    $stmt = $conn->prepare("SELECT s.id AS sitter_id FROM SITTERS s WHERE s.user_id = ?");
+    $stmt->bind_param("i", $payload['user_id']);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result->num_rows === 0) {
+        $response['message'] = "Sitter not found";
+        break;
+    }
+
+    $sitterId = $result->fetch_assoc()['sitter_id'];
+
+    $stmt = $conn->prepare("SELECT d.name, d.breed, d.age, da.instructions, da.start_date, da.end_date
+                            FROM DOG_ACCESS da
+                            JOIN DOGS d ON da.dog_id = d.id
+                            WHERE da.sitter_id = ?");
+    $stmt->bind_param("i", $sitterId);
+    $stmt->execute();
+    $dogResult = $stmt->get_result();
+
+    $dogs = [];
+    while ($row = $dogResult->fetch_assoc()) {
+        $dogs[] = [
+            'name' => $row['name'],
+            'breed' => $row['breed'],
+            'age' => $row['age'],
+            'instructions' => $row['instructions'],
+            'start_date' => $row['start_date'],
+            'end_date' => $row['end_date']
+        ];
+    }
+
+    $response = [
+        'status' => 'success',
+        'dogs' => $dogs
+    ];
+    break;
+
             case 'register':
                 $duplicateErrors = checkDuplicateCredentials($conn, $payload['username'], $payload['email']);
                 if (!empty($duplicateErrors)) {
