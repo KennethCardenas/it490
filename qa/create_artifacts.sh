@@ -7,13 +7,7 @@ ARTIFACT_DIR=~/deploy/artifacts/$VERSION
 
 mkdir -p $ARTIFACT_DIR
 
-# App Code
-tar -czf $ARTIFACT_DIR/code.tar.gz -C /var/www barkbuddy
-
 # API Config
-tar -czf $ARTIFACT_DIR/api-config.tar.gz -C /etc app-config
-
-# DB Schema only (no data)
-mysqldump -u root -pYourPassword --no-data BARKBUDDY > $ARTIFACT_DIR/schema.sql
+tar -czf $ARTIFACT_DIR/api-config.tar.gz -C "/home/fm369/it490/it490" .
 
 echo "Created deployment artifact at $ARTIFACT_DIR"
