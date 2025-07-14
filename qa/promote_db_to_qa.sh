@@ -1,17 +1,28 @@
 #!/bin/bash
 
-echo "[*] Dumping database from DEV..."
+# === CONFIGURATION ===
+DEV_DB_HOST="100.70.204.26"
+DEV_DB_PORT="3306"
+DEV_DB_USER="BARKBUDDYUSER"
+DEV_DB_PASS="new_secure_password"
+DEV_DB_NAME="BARKBUDDY"
+QA_USER="qa_db"
+QA_IP="100.91.149.60"
+DUMP_FILE="dev_dump.sql"
+REMOTE_PATH="/tmp/$DUMP_FILE"
 
-mysqldump -h 100.70.204.26 -P 3306 -u BARKBUDDYUSER -p'new_secure_password' BARKBUDDY > dev_dump.sql
+echo "[*] Dumping database from DEV ($DEV_DB_HOST)..."
+
+mysqldump -h $DEV_DB_HOST -P $DEV_DB_PORT -u $DEV_DB_USER -p"$DEV_DB_PASS" $DEV_DB_NAME > $DUMP_FILE
 
 if [ $? -ne 0 ]; then
-  echo "[!] Error: Failed to dump database."
+  echo "[!] Error: Failed to dump database from DEV."
   exit 1
 fi
 
-echo "[*] Copying dump to QA..."
+echo "[*] Copying dump to QA ($QA_IP)..."
 
-scp dev_dump.sql qa_db@100.91.149.60:/tmp/dev_dump.sql
+scp $DUMP_FILE $QA_USER@$QA_IP:$REMOTE_PATH
 
 if [ $? -ne 0 ]; then
   echo "[!] Error: Failed to copy dump to QA."
@@ -20,10 +31,10 @@ fi
 
 echo "[*] Restoring dump on QA..."
 
-ssh qa_db@100.91.149.60 "mysql -u BARKBUDDYUSER -p'new_secure_password' BARKBUDDY < /tmp/dev_dump.sql"
+ssh $QA_USER@$QA_IP "mysql -u $DEV_DB_USER -p'$DEV_DB_PASS' $DEV_DB_NAME < $REMOTE_PATH"
 
 if [ $? -ne 0 ]; then
-  echo "[!] Error: Failed to import dump on QA."
+  echo "[!] Error: Failed to restore database on QA."
   exit 1
 fi
 
