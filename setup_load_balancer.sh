@@ -1,45 +1,41 @@
 #!/bin/bash
 
-# Setup Load Balancer for IT490 App
-# This script configures Apache load balancing between two app servers
-
 echo "Setting up Apache Load Balancer..."
 
-# Enable required Apache modules
-echo "Enabling Apache modules..."
+# Copy the load balancer configuration
+sudo cp /home/cja48/it490/load-balancer.conf /etc/apache2/sites-available/
+
+# Enable the load balancer site
+sudo a2ensite load-balancer.conf
+
+# Disable the default site to avoid conflicts
+sudo a2dissite 000-default.conf
+
+# Enable required modules (should already be enabled but making sure)
 sudo a2enmod proxy
 sudo a2enmod proxy_http
 sudo a2enmod proxy_balancer
 sudo a2enmod lbmethod_byrequests
-sudo a2enmod headers
+sudo a2enmod slotmem_shm
 sudo a2enmod status
+sudo a2enmod headers
 
-# Copy the load balancer configuration
-echo "Installing load balancer configuration..."
-sudo cp /home/cja48/it490/load-balancer.conf /etc/apache2/sites-available/
-
-# Disable default site and enable load balancer
-echo "Configuring sites..."
-sudo a2dissite 000-default
-sudo a2ensite load-balancer
-
-# Test Apache configuration
+# Test the configuration
 echo "Testing Apache configuration..."
 sudo apache2ctl configtest
 
 if [ $? -eq 0 ]; then
     echo "Configuration test passed. Restarting Apache..."
     sudo systemctl restart apache2
-    sudo systemctl status apache2
+    sudo systemctl enable apache2
+    
+    echo "Load balancer setup complete!"
+    echo "Access balancer manager at: http://$(hostname -I | awk '{print $1}')/balancer-manager"
+    echo "Access server status at: http://$(hostname -I | awk '{print $1}')/server-status"
+    echo "Backend servers:"
+    echo "  - Server A: 178.156.159.246:8080"
+    echo "  - Server B: 178.156.166.21:8080"
 else
     echo "Configuration test failed. Please check the configuration."
     exit 1
 fi
-
-echo "Load balancer setup complete!"
-echo ""
-echo "You can monitor the load balancer at:"
-echo "  http://your-server-ip/balancer-manager"
-echo "  http://your-server-ip/server-status"
-echo ""
-echo "Make sure the second server (178.156.159.246) is running your app on port 80"
