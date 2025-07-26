@@ -35,6 +35,30 @@ CREATE TABLE IF NOT EXISTS USERS (
     password VARCHAR(255) NOT NULL,
     role ENUM('owner', 'sitter', 'admin') DEFAULT 'owner'
 );
+
+CREATE TABLE IF NOT EXISTS DOGS (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    breed VARCHAR(100),
+    health_status VARCHAR(255),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES USERS(id)
+);
+
+CREATE TABLE IF NOT EXISTS DOG_TASKS (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    dog_id INT NOT NULL,
+    user_id INT NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    description TEXT,
+    due_date DATETIME,
+    completed TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (dog_id) REFERENCES DOGS(id),
+    FOREIGN KEY (user_id) REFERENCES USERS(id)
+);
 EOF
 
 echo "=== [DB SETUP] MySQL DB setup complete ==="
