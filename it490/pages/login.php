@@ -25,6 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (isset($response['status']) && $response['status'] === 'success') {
         $_SESSION['user'] = $response['user'];
+        $_SESSION['role'] = $response['user']['role'] ?? null;
         header("Location: " . getReturnUrl());
         exit();
     } else {

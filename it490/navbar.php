@@ -23,6 +23,13 @@
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Logout</span>
                         </a>
+                         <?php if (isAdmin()): ?>
+                        <a href="admin.php" class="nav-link">
+                        <i class="fas fa-user-shield"></i>
+                            <span>Admin</span>
+                            </a>
+                        <?php endif; ?>
+
                     <?php else: ?>
                         <a href="register.php" class="nav-link">
                             <i class="fas fa-user-plus"></i>

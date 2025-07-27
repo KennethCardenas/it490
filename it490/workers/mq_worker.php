@@ -15,6 +15,12 @@ function verifyPassword(string $password, string $hash): bool {
     return password_verify($password, $hash);
 }
 
+function logAction($conn, $userId, $type, $message) {
+    $stmt = $conn->prepare("INSERT INTO LOGS (USER_ID, LOG_TYPE, MESSAGE) VALUES (?, ?, ?)");
+    $stmt->bind_param("iss", $userId, $type, $message);
+    $stmt->execute();
+}
+
 function validateEmailOrUsername($input) {
     return filter_var($input, FILTER_VALIDATE_EMAIL)
         ? ['field' => 'email', 'value' => $input]
@@ -63,7 +69,7 @@ $callback = function ($msg) use ($channel, $conn) {
         switch ($payload['type'] ?? '') {
             case 'login':
                 $credential = validateEmailOrUsername($payload['username']);
-                $query = "SELECT id, username, email, password FROM USERS WHERE {$credential['field']} = ?";
+                $query = "SELECT id, username, email, password, role FROM USERS WHERE {$credential['field']} = ?";
                 $stmt = $conn->prepare($query);
                 $stmt->bind_param("s", $credential['value']);
                 $stmt->execute();
@@ -77,9 +83,11 @@ $callback = function ($msg) use ($channel, $conn) {
                             'user' => [
                                 'id' => $user['id'],
                                 'username' => $user['username'],
-                                'email' => $user['email']
+                                'email' => $user['email'],
+                                'role' => $user['role']  
                             ]
                         ];
+                        logAction($conn, $user['id'], 'login', 'User logged in');
                         echo " [+] Login success for user: {$user['username']}\\n";
                     } else {
                         $response['message'] = "Invalid credentials";
@@ -114,6 +122,7 @@ $callback = function ($msg) use ($channel, $conn) {
                             'email' => $payload['email']
                         ]
                     ];
+                    logAction($conn, $stmt->insert_id, 'register', 'User registered');
                     echo " [+] Registered user: {$payload['username']}\\n";
                 } else {
                     $response['message'] = "Database error: " . $conn->error;
@@ -161,6 +170,7 @@ $callback = function ($msg) use ($channel, $conn) {
                             'email' => $payload['email']
                         ]
                     ];
+                    logAction($conn, $payload['user_id'], 'update_profile', 'User updated profile');
                     echo " [+] Updated profile for user ID: {$payload['user_id']}\\n";
                 } else {
                     $response['message'] = "Update failed: " . $conn->error;
@@ -200,6 +210,7 @@ $callback = function ($msg) use ($channel, $conn) {
 
             case 'logout':
                 if (!empty($payload['user_id'])) {
+                    logAction($conn, $payload['user_id'], 'logout', 'User logged out');
                     echo " [+] Logout event for user ID: {$payload['user_id']}\n";
                     $response = ['status' => 'success', 'message' => 'Logout recorded'];
                 } else {
