@@ -198,6 +198,55 @@ $callback = function ($msg) use ($channel, $conn) {
                 echo " [?] Password reset requested\\n";
                 break;
 
+                        case 'create_dog':
+                            // match database schema which stores the owner in owner_id
+                            $stmt = $conn->prepare("INSERT INTO DOGS (owner_id, name, breed, health_status, notes) VALUES (?, ?, ?, ?, ?)");
+                            $stmt->bind_param("issss", $payload['user_id'], $payload['name'], $payload['breed'], $payload['health_status'], $payload['notes']);
+                            if ($stmt->execute()) {
+                                $response = ['status' => 'success', 'message' => 'Dog added', 'dog_id' => $stmt->insert_id];
+                                echo " [+] Dog created id {$stmt->insert_id}\n";
+                            } else {
+                                $response['message'] = 'Failed to create dog: ' . $conn->error;
+                                echo " [-] Dog creation failed\n";
+                            }
+                            break;
+            
+                        case 'get_dogs':
+                            // return all dogs that belong to the user (owner_id)
+                            $stmt = $conn->prepare("SELECT * FROM DOGS WHERE owner_id = ?");
+                            $stmt->bind_param("i", $payload['user_id']);
+                            $stmt->execute();
+                            $res = $stmt->get_result();
+                            $dogs = $res->fetch_all(MYSQLI_ASSOC);
+                            $response = ['status' => 'success', 'dogs' => $dogs];
+                            break;
+            
+                        case 'add_task':
+                            $stmt = $conn->prepare("INSERT INTO DOG_TASKS (dog_id, user_id, title, description, due_date) VALUES (?, ?, ?, ?, ?)");
+                            $stmt->bind_param("iisss", $payload['dog_id'], $payload['user_id'], $payload['title'], $payload['description'], $payload['due_date']);
+                            if ($stmt->execute()) {
+                                $response = ['status' => 'success', 'message' => 'Task added'];
+                                echo " [+] Task added for dog {$payload['dog_id']}\n";
+                            } else {
+                                $response['message'] = 'Failed to add task: ' . $conn->error;
+                                echo " [-] Task add failed\n";
+                            }
+                            break;
+            
+                        case 'get_tasks':
+                            $stmt = $conn->prepare("SELECT * FROM DOG_TASKS WHERE dog_id = ? ORDER BY due_date");
+                            $stmt->bind_param("i", $payload['dog_id']);
+                            $stmt->execute();
+                            $tasks = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                            $response = ['status' => 'success', 'tasks' => $tasks];
+                            break;
+            
+                        case 'toggle_task':
+                            $stmt = $conn->prepare("UPDATE DOG_TASKS SET completed = NOT completed WHERE id = ?");
+                            $stmt->bind_param("i", $payload['task_id']);
+                            $stmt->execute();
+                            $response = ['status' => 'success'];
+                            break;
             case 'logout':
                 if (!empty($payload['user_id'])) {
                     echo " [+] Logout event for user ID: {$payload['user_id']}\n";
@@ -207,6 +256,26 @@ $callback = function ($msg) use ($channel, $conn) {
                     echo " [-] Logout failed: Missing user ID\n";
                 }
                 break;
+
+                case 'add_water':
+                    $stmt = $conn->prepare("INSERT INTO WATER_TRACKING (dog_id, user_id, amount_ml, notes) VALUES (?, ?, ?, ?)");
+                    $stmt->bind_param("iiis", $payload['dog_id'], $payload['user_id'], $payload['amount'], $payload['notes']);
+                    if ($stmt->execute()) {
+                        $response = ['status' => 'success', 'message' => 'Water entry added'];
+                        echo " [+] Water entry added for dog {$payload['dog_id']}\n";
+                    } else {
+                        $response['message'] = 'Failed to add water entry: ' . $conn->error;
+                        echo " [-] Water entry add failed\n";
+                    }
+                    break;
+                
+                case 'get_water':
+                    $stmt = $conn->prepare("SELECT * FROM WATER_TRACKING WHERE dog_id = ? ORDER BY timestamp DESC");
+                    $stmt->bind_param("i", $payload['dog_id']);
+                    $stmt->execute();
+                    $waterEntries = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                    $response = ['status' => 'success', 'entries' => $waterEntries];
+                    break;
 
             default:
                 $response['message'] = "Unsupported action type";

@@ -9,26 +9,30 @@
             
             <div class="navbar-menu">
                 <div class="navbar-links">
-                    <a href="landing.php" class="nav-link">
+                    <a href="/it490/pages/landing.php" class="nav-link">
                         <i class="fas fa-home"></i>
                         <span>Home</span>
                     </a>
                     
                     <?php if (isAuthenticated()): ?>
-                        <a href="profile.php" class="nav-link">
+                        <a href="/it490/pages/profile.php" class="nav-link">
                             <i class="fas fa-user"></i>
                             <span>Profile</span>
                         </a>
-                        <a href="logout.php" class="nav-link">
+                        <a href="/it490/pages/dogs.php" class="nav-link">
+                            <i class="fas fa-paw"></i>
+                            <span>Dogs</span>
+                        </a>
+                        <a href="/it490/pages/logout.php" class="nav-link">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Logout</span>
                         </a>
                     <?php else: ?>
-                        <a href="register.php" class="nav-link">
+                        <a href="/it490/pages/register.php" class="nav-link">
                             <i class="fas fa-user-plus"></i>
                             <span>Register</span>
                         </a>
-                        <a href="login.php" class="nav-link">
+                        <a href="/it490/pages/login.php" class="nav-link">
                             <i class="fas fa-sign-in-alt"></i>
                             <span>Login</span>
                         </a>

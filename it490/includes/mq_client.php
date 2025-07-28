@@ -39,11 +39,59 @@ function sendMessage(array $payload): array {
             }
             break;
 
+        case 'create_dog':
+            foreach (['user_id','name'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
+                }
+            }
+            break;
+
+        case 'get_dogs':
+            if (empty($payload['user_id'])) {
+                throw new InvalidArgumentException('user_id is required');
+            }
+            break;
+
+        case 'add_task':
+            foreach (['dog_id','user_id','title','due_date'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
+                }
+            }
+            break;
+
+        case 'get_tasks':
+            if (empty($payload['dog_id'])) {
+                throw new InvalidArgumentException('dog_id is required');
+            }
+            break;
+
+        case 'toggle_task':
+            if (empty($payload['task_id'])) {
+                throw new InvalidArgumentException('task_id is required');
+            }
+            break;
+
         case 'logout':
             if (empty($payload['user_id'])) {
                 throw new InvalidArgumentException("user_id is required for logout");
             }
             break;
+
+            case 'get_water':
+                if (empty($payload['dog_id'])) {
+                    throw new InvalidArgumentException('dog_id is required');
+                }
+                break;
+                
+            case 'add_water':
+                foreach (['dog_id','user_id','amount'] as $f) {
+                    if (empty($payload[$f])) {
+                        throw new InvalidArgumentException("$f is required");
+                    }
+                }
+                break;
 
         default:
             throw new InvalidArgumentException("Unsupported message type: {$payload['type']}");
