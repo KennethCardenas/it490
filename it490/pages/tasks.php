@@ -3,39 +3,64 @@ include_once __DIR__ . '/../auth.php';
 requireAuth();
 
 $user = $_SESSION['user'];
-include_once __DIR__ . '/../includes/mq_client.php';
+// connect directly to the database
+require_once __DIR__ . '/../api/connect.php';
 $dogId = intval($_GET['dog_id'] ?? 0);
 if (!$dogId) { die('Dog not specified'); }
 
 // add task
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $payload = [
-        'type' => 'add_task',
-        'dog_id' => $dogId,
-        'user_id' => $user['id'],
-        'title' => trim($_POST['title']),
-        'description' => trim($_POST['description']),
-        'due_date' => trim($_POST['due_date'])
-    ];
-    $taskResp = sendMessage($payload);
+    $stmt = $conn->prepare(
+        "INSERT INTO DOG_TASKS (dog_id, user_id, title, description, due_date) VALUES (?, ?, ?, ?, ?)"
+    );
+    $stmt->bind_param(
+        "iisss",
+        $dogId,
+        $user['id'],
+        $title,
+        $desc,
+        $due
+    );
+    $title = trim($_POST['title']);
+    $desc = trim($_POST['description']);
+    $due = trim($_POST['due_date']);
+    if ($stmt->execute()) {
+        $taskMessage = 'Task added';
+    } else {
+        $taskMessage = 'Failed to add task: ' . $conn->error;
+    }
+    $stmt->close();
 }
 
 // toggle completion if requested
 if (isset($_GET['toggle'])) {
-    sendMessage(['type' => 'toggle_task', 'task_id' => intval($_GET['toggle'])]);
+    $toggleId = intval($_GET['toggle']);
+    $stmt = $conn->prepare("UPDATE DOG_TASKS SET completed = NOT completed WHERE id = ?");
+    $stmt->bind_param("i", $toggleId);
+    $stmt->execute();
+    $stmt->close();
     header('Location: tasks.php?dog_id=' . $dogId);
     exit;
 }
 
 $tasks = [];
-$resp = sendMessage(['type' => 'get_tasks', 'dog_id' => $dogId]);
-if ($resp['status'] === 'success') { $tasks = $resp['tasks']; }
+$stmt = $conn->prepare("SELECT * FROM DOG_TASKS WHERE dog_id = ? ORDER BY due_date");
+$stmt->bind_param("i", $dogId);
+if ($stmt->execute()) {
+    $res = $stmt->get_result();
+    $tasks = $res->fetch_all(MYSQLI_ASSOC);
+}
+$stmt->close();
 ?>
-<?php $title = "Tasks"; include_once __DIR__ . '/../header.php'; ?>
+<?php
+    $title = "Tasks";
+    $pageCss = '/it490/styles/tasks.css';
+    include_once __DIR__ . '/../header.php';
+?>
 <div class="tasks-container">
     <h2>Tasks for Dog #<?= $dogId ?></h2>
-    <?php if (!empty($taskResp['message'])): ?>
-        <p><?= htmlspecialchars($taskResp['message']) ?></p>
+    <?php if (!empty($taskMessage)): ?>
+        <p><?= htmlspecialchars($taskMessage) ?></p>
     <?php endif; ?>
     <table>
         <tr><th>Title</th><th>Due</th><th>Status</th><th></th></tr>
@@ -56,4 +81,5 @@ if ($resp['status'] === 'success') { $tasks = $resp['tasks']; }
         <button type="submit">Add</button>
     </form>
 </div>
+<?php $conn->close(); ?>
 <?php include_once __DIR__ . '/../footer.php'; ?>

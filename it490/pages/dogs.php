@@ -37,7 +37,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // fetch dogs
 $dogs = [];
 $stmt = $conn->prepare("SELECT * FROM DOGS WHERE owner_id = ?");
-
 $stmt->bind_param("i", $user['id']);
 if ($stmt->execute()) {
     $res = $stmt->get_result();
