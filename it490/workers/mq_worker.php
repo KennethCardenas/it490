@@ -257,6 +257,26 @@ $callback = function ($msg) use ($channel, $conn) {
                 }
                 break;
 
+                case 'add_water':
+                    $stmt = $conn->prepare("INSERT INTO WATER_TRACKING (dog_id, user_id, amount_ml, notes) VALUES (?, ?, ?, ?)");
+                    $stmt->bind_param("iiis", $payload['dog_id'], $payload['user_id'], $payload['amount'], $payload['notes']);
+                    if ($stmt->execute()) {
+                        $response = ['status' => 'success', 'message' => 'Water entry added'];
+                        echo " [+] Water entry added for dog {$payload['dog_id']}\n";
+                    } else {
+                        $response['message'] = 'Failed to add water entry: ' . $conn->error;
+                        echo " [-] Water entry add failed\n";
+                    }
+                    break;
+                
+                case 'get_water':
+                    $stmt = $conn->prepare("SELECT * FROM WATER_TRACKING WHERE dog_id = ? ORDER BY timestamp DESC");
+                    $stmt->bind_param("i", $payload['dog_id']);
+                    $stmt->execute();
+                    $waterEntries = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                    $response = ['status' => 'success', 'entries' => $waterEntries];
+                    break;
+
             default:
                 $response['message'] = "Unsupported action type";
                 echo " [?] Unknown message type\\n";
