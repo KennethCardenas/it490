@@ -199,7 +199,8 @@ $callback = function ($msg) use ($channel, $conn) {
                 break;
 
                         case 'create_dog':
-                            $stmt = $conn->prepare("INSERT INTO DOGS (user_id, name, breed, health_status, notes) VALUES (?, ?, ?, ?, ?)");
+                            // match database schema which stores the owner in owner_id
+                            $stmt = $conn->prepare("INSERT INTO DOGS (owner_id, name, breed, health_status, notes) VALUES (?, ?, ?, ?, ?)");
                             $stmt->bind_param("issss", $payload['user_id'], $payload['name'], $payload['breed'], $payload['health_status'], $payload['notes']);
                             if ($stmt->execute()) {
                                 $response = ['status' => 'success', 'message' => 'Dog added', 'dog_id' => $stmt->insert_id];
@@ -211,7 +212,8 @@ $callback = function ($msg) use ($channel, $conn) {
                             break;
             
                         case 'get_dogs':
-                            $stmt = $conn->prepare("SELECT * FROM DOGS WHERE user_id = ?");
+                            // return all dogs that belong to the user (owner_id)
+                            $stmt = $conn->prepare("SELECT * FROM DOGS WHERE owner_id = ?");
                             $stmt->bind_param("i", $payload['user_id']);
                             $stmt->execute();
                             $res = $stmt->get_result();

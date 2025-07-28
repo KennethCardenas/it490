@@ -1,0 +1,48 @@
+.tasks-container {
+    max-width: 700px;
+    margin: 2rem auto;
+    background: #fff;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.tasks-container h2 {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.tasks-container table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+}
+
+.tasks-container th,
+.tasks-container td {
+    padding: 0.5rem;
+    border-bottom: 1px solid #ddd;
+    text-align: left;
+}
+
+.tasks-container form {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.tasks-container input,
+.tasks-container textarea {
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.tasks-container button {
+    width: fit-content;
+    padding: 0.5rem 1rem;
+    background: #0077cc;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
