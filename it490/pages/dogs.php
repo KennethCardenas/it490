@@ -8,8 +8,9 @@ require_once __DIR__ . '/../api/connect.php';
 
 // handle add dog
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // owner_id column stores the user that owns the dog
     $stmt = $conn->prepare(
-        "INSERT INTO DOGS (USER_ID, NAME, BREED, HEALTH_STATUS, NOTES) VALUES (?, ?, ?, ?, ?)"
+        "INSERT INTO DOGS (OWNER_ID, NAME, BREED, HEALTH_STATUS, NOTES) VALUES (?, ?, ?, ?, ?)"
     );
     $stmt->bind_param(
         "issss",
@@ -35,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // fetch dogs
 $dogs = [];
-$stmt = $conn->prepare("SELECT * FROM DOGS WHERE USER_ID = ?");
+$stmt = $conn->prepare("SELECT * FROM DOGS WHERE OWNER_ID = ?");
 $stmt->bind_param("i", $user['id']);
 if ($stmt->execute()) {
     $res = $stmt->get_result();
