@@ -32,3 +32,13 @@ ADD COLUMN trigger_text TEXT;
 
 -- 5. Optional: User avatars
 ALTER TABLE USERS ADD COLUMN profile_image_url VARCHAR(255) DEFAULT NULL;
+
+-- 6. Create LOGS table for centralized logging
+CREATE TABLE IF NOT EXISTS logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT DEFAULT NULL,
+    type VARCHAR(50),
+    message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES USERS(id)
+);

@@ -278,6 +278,27 @@ $callback = function ($msg) use ($channel, $conn) {
                     echo " [-] Failed to fetch sitter profile: {$conn->error}\n";
                 }
                 break;
+            case 'log_event':
+                $stmt = $conn->prepare("INSERT INTO logs (user_id, type, message) VALUES (?, ?, ?)");
+                $userId = $payload['user_id'] ?? null;
+                $logType = $payload['log_type'] ?? 'general';
+                $logMessage = $payload['message'] ?? 'No message provided';
+                $stmt->bind_param('iss', $userId, $logType, $logMessage);
+                if ($stmt->execute()) {
+                    $response = ['status' => 'success', 'message' => 'Log recorded'];
+                    echo " [+] Logged event: $logType - $logMessage\n";
+                } else {
+                $response['message'] = 'Failed to log event: ' . $conn->error;
+                echo " [-] Logging failed: {$conn->error}\n";
+                }
+                break;              
+
+
+
+
+
+
+
 
             case 'update_sitter_profile':
                 $bio = $payload['bio'] ?? '';
