@@ -1,3 +1,29 @@
+
+-- Base tables (must exist first)
+CREATE TABLE IF NOT EXISTS USERS (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50),
+    password VARCHAR(255)
+);
+
+CREATE TABLE IF NOT EXISTS DOGS (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50),
+    breed VARCHAR(50)
+);
+
+CREATE TABLE IF NOT EXISTS ACTIVITIES (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    dog_id INT,
+    activity_type VARCHAR(50),
+    FOREIGN KEY (dog_id) REFERENCES DOGS(id)
+);
+
+
+
+
+
+
 -- 1. Extend DOGS
 ALTER TABLE DOGS ADD COLUMN care_instructions TEXT;
 
@@ -6,6 +32,7 @@ CREATE TABLE IF NOT EXISTS SITTERS (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     bio TEXT,
+
     experience_years INT DEFAULT 0,
     rating FLOAT DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES USERS(id)
