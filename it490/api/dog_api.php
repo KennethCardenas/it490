@@ -8,7 +8,7 @@ class DogAPI {
     private const BASE_URL = 'https://api.thedogapi.com/v1';
     private const CACHE_DIR = __DIR__ . '/../cache/dog_api/';
     private const CACHE_DURATION = 3600; // 1 hour in seconds
-    private const API_KEY = 'live_gytZAHp0BM0T71kA2V5wJQ3RjAYKK2k9fU2EqSZMXD3W2iHsq96GxoFNOlHmLHAL'; // Replace with your API key from thedogapi.com
+    private const API_KEY = 'live_gytZAHp0BM0T71kA2V5wJQ3RjAYKK2k9fU2EqSZMXD3W2iHsq96GxoFNOlHmLHAL'; 
     
     /**
      * Initialize cache directory
