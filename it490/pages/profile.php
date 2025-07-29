@@ -6,6 +6,7 @@ $user = $_SESSION['user'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     include_once __DIR__ . '/../includes/mq_client.php';
+    include_once __DIR__ . '/../api/connect.php'; // ✅ For logging
 
     $payload = [
         "type" => "update_profile",
@@ -21,8 +22,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['user'] = $response['user'];
         $user = $response['user']; // update local variable
         $success_message = "Profile updated successfully!";
+
+         // ✅ Log successful profile update
+        $conn = include __DIR__ . '/../api/connect.php';
+        $userId = intval($user['id']);
+        $usernameEscaped = $conn->real_escape_string($user['username'] ?? 'unknown');
+        $conn->query("
+            INSERT INTO logs (user_id, type, message) 
+            VALUES ($userId, 'profile_update', 'User $usernameEscaped updated their profile')
+        ");
+
+
     } else {
         $error_message = "Update failed: " . htmlspecialchars($response['message'] ?? "Unknown error.");
+
+        
+        // ✅ Log failed update
+        $conn = include __DIR__ . '/../api/connect.php';
+        $userId = intval($user['id']);
+        $usernameEscaped = $conn->real_escape_string($user['username'] ?? 'unknown');
+        $conn->query("
+            INSERT INTO logs (user_id, type, message) 
+            VALUES ($userId, 'profile_update_failed', 'User $usernameEscaped failed to update their profile')
+        ");
+
     }
 }
 ?>

@@ -1,6 +1,7 @@
 <?php
 include_once __DIR__ . '/../auth.php';
 require_once __DIR__ . '/../includes/mq_client.php';
+require_once __DIR__ . '/../db_connect.php'; // ✅ for logging
 startSecureSession();
 
 if (isset($_GET['confirmed']) && $_GET['confirmed'] === 'true') {
@@ -9,6 +10,16 @@ if (isset($_GET['confirmed']) && $_GET['confirmed'] === 'true') {
             'type' => 'logout',
             'user_id' => $_SESSION['user']['id']
         ]);
+         
+         // ✅ Log logout
+        $conn = include __DIR__ . '/../api/connect.php';
+        $userId = intval($_SESSION['user']['id']);
+        $usernameEscaped = $conn->real_escape_string($_SESSION['user']['username'] ?? 'unknown');
+        $conn->query("
+            INSERT INTO logs (user_id, type, message) 
+            VALUES ($userId, 'logout', 'User $usernameEscaped logged out')
+        ");
+
     }
 
     $_SESSION = [];

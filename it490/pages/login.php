@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/../auth.php';
 require_once __DIR__ . '/../includes/mq_client.php';
+require_once __DIR__ . '/../db_connect.php'; // for logging
+
 
 startSecureSession();
 
@@ -26,12 +28,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($response['status']) && $response['status'] === 'success') {
         $_SESSION['user'] = $response['user'];
         $_SESSION['role'] = $response['user']['role'] ?? null;
+
+          // ✅ Log successful login
+        $conn = include __DIR__ . '/../api/connect.php';
+        $userId = intval($response['user']['id'] ?? 0); 
+        $usernameEscaped = $conn->real_escape_string($response['user']['username'] ?? 'unknown');
+        $conn->query("
+            INSERT INTO logs (user_id, type, message) 
+            VALUES ($userId, 'login', 'User $usernameEscaped logged in')
+        ");
+
+
+
         header("Location: " . getReturnUrl());
         exit();
     } else {
         $error_message = "Login failed: " . htmlspecialchars($response['message'] ?? 'Unknown error');
+        
+        
+        // ✅ Log failed login
+        $conn = include __DIR__ . '/../api/connect.php';
+        $usernameEscaped = $conn->real_escape_string($username);
+        $conn->query("
+            INSERT INTO logs (user_id, type, message) 
+            VALUES (0, 'login_failed', 'Failed login attempt for $usernameEscaped')
+        ");
+
     }
 }
+  
+
+
+
 ?>
 
 <!DOCTYPE html>
