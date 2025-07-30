@@ -63,7 +63,7 @@ $callback = function ($msg) use ($channel, $conn) {
         switch ($payload['type'] ?? '') {
             case 'login':
                 $credential = validateEmailOrUsername($payload['username']);
-                $query = "SELECT id, username, email, password FROM USERS WHERE {$credential['field']} = ?";
+                $query = "SELECT id, username, email, password, role FROM USERS WHERE {$credential['field']} = ?";
                 $stmt = $conn->prepare($query);
                 $stmt->bind_param("s", $credential['value']);
                 $stmt->execute();
@@ -77,7 +77,8 @@ $callback = function ($msg) use ($channel, $conn) {
                             'user' => [
                                 'id' => $user['id'],
                                 'username' => $user['username'],
-                                'email' => $user['email']
+                                'email' => $user['email'],
+                                'role' => $user['role'] ?? 'owner'
                             ]
                         ];
                         echo " [+] Login success for user: {$user['username']}\\n";
@@ -111,7 +112,8 @@ $callback = function ($msg) use ($channel, $conn) {
                         'user' => [
                             'id' => $stmt->insert_id,
                             'username' => $payload['username'],
-                            'email' => $payload['email']
+                            'email' => $payload['email'],
+                            'role' => 'owner'
                         ]
                     ];
                     echo " [+] Registered user: {$payload['username']}\\n";
@@ -152,13 +154,19 @@ $callback = function ($msg) use ($channel, $conn) {
                 $stmt->bind_param($types, ...$params);
 
                 if ($stmt->execute()) {
+                    $roleStmt = $conn->prepare("SELECT role FROM USERS WHERE id = ?");
+                    $roleStmt->bind_param("i", $payload['user_id']);
+                    $roleStmt->execute();
+                    $roleRes = $roleStmt->get_result()->fetch_assoc();
+                    $roleStmt->close();
                     $response = [
                         'status' => 'success',
                         'message' => 'Profile updated',
                         'user' => [
                             'id' => $payload['user_id'],
                             'username' => $payload['username'],
-                            'email' => $payload['email']
+                            'email' => $payload['email'],
+                            'role' => $roleRes['role'] ?? 'owner'
                         ]
                     ];
                     echo " [+] Updated profile for user ID: {$payload['user_id']}\\n";
