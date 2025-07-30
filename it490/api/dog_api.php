@@ -4,6 +4,8 @@
  * Integrates with https://api.thedogapi.com (The Dog API)
  */
 
+require_once __DIR__ . '/dog_cache.php';
+
 class DogAPI {
     private const BASE_URL = 'https://api.thedogapi.com/v1';
     private const CACHE_DIR = __DIR__ . '/../cache/dog_api/';
@@ -29,10 +31,18 @@ class DogAPI {
             return null;
         }
         
-        // Check cache first
+        // Check database cache first (fastest)
+        $cachedData = DogCache::getBreedImage($breed);
+        if ($cachedData) {
+            return $cachedData;
+        }
+        
+        // Check file cache as fallback
         $cacheKey = 'breed_image_' . md5(strtolower($breed));
         $cachedData = self::getFromCache($cacheKey);
         if ($cachedData) {
+            // Store in database cache for future requests
+            DogCache::cacheBreedImage($breed, $cachedData);
             return $cachedData;
         }
         
@@ -59,8 +69,10 @@ class DogAPI {
                 'breed_info' => $imageData['breeds'][0] ?? null
             ];
             
-            // Cache the result
+            // Cache in both file and database
             self::saveToCache($cacheKey, $result);
+            DogCache::cacheBreedImage($breed, $result);
+            
             return $result;
         }
         
@@ -80,10 +92,18 @@ class DogAPI {
         
         $count = min($count, 25); // API limit
         
-        // Check cache first
+        // Check database cache first
+        $cachedImages = DogCache::getBreedImages($breed, $count);
+        if (count($cachedImages) >= $count) {
+            return array_slice($cachedImages, 0, $count);
+        }
+        
+        // Check file cache as fallback
         $cacheKey = 'breed_images_' . md5(strtolower($breed) . '_' . $count);
         $cachedData = self::getFromCache($cacheKey);
         if ($cachedData) {
+            // Store in database cache for future requests
+            DogCache::cacheBreedImages($breed, $cachedData);
             return $cachedData;
         }
         
@@ -104,8 +124,10 @@ class DogAPI {
                 return $item['url'];
             }, $response);
             
-            // Cache the result
+            // Cache in both file and database
             self::saveToCache($cacheKey, $images);
+            DogCache::cacheBreedImages($breed, $images);
+            
             return $images;
         }
         
@@ -299,12 +321,38 @@ class DogAPI {
      * Clear all cached data
      */
     public static function clearCache() {
+        // Clear file cache
         if (is_dir(self::CACHE_DIR)) {
             $files = glob(self::CACHE_DIR . '*.json');
             foreach ($files as $file) {
                 unlink($file);
             }
         }
+        
+        // Clear database cache
+        DogCache::cleanupExpiredCache();
+    }
+    
+    /**
+     * Get comprehensive cache statistics
+     * @return array Combined cache statistics
+     */
+    public static function getCacheStats() {
+        $dbStats = DogCache::getCacheStats();
+        
+        // File cache stats
+        $fileCount = 0;
+        if (is_dir(self::CACHE_DIR)) {
+            $files = glob(self::CACHE_DIR . '*.json');
+            $fileCount = count($files);
+        }
+        
+        return [
+            'database_cache' => $dbStats,
+            'file_cache' => [
+                'total_files' => $fileCount
+            ]
+        ];
     }
     
     /**
