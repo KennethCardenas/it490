@@ -55,3 +55,9 @@ function getReturnUrl(): string {
     unset($_SESSION['return_url']);
     return $url;
 }
+
+// Check if the current user has admin role
+function isAdmin(): bool {
+    startSecureSession();
+    return isset($_SESSION['user']['role']) && $_SESSION['user']['role'] === 'admin';
+}
