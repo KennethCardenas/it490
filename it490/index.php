@@ -17,13 +17,13 @@ try {
         session_regenerate_id(true);
         
         // Redirect to landing page
-        header("Location: pages/landing.php");
+        header("Location: /it490/pages/landing.php");
         exit();
     } else {
         // Redirect to login with optional return URL
         $returnUrl = isset($_SERVER['REQUEST_URI']) ? 
             '?return=' . urlencode($_SERVER['REQUEST_URI']) : '';
-        header("Location: pages/login.php" . $returnUrl);
+        header("Location: /it490/pages/login.php" . $returnUrl);
         exit();
     }
 } catch (Exception $e) {
@@ -31,6 +31,6 @@ try {
     error_log('Authentication check failed: ' . $e->getMessage());
     
     // Show generic error page
-    header("Location: error.php?code=500");
+    header("Location: /it490/error.php?code=500");
     exit();
 }

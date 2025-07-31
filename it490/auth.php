@@ -37,13 +37,13 @@ function requireAuth(): void {
     startSecureSession();
 
     if (!isAuthenticated()) {
-        $returnUrl = $_SERVER['REQUEST_URI'] ?? '/pages/landing.php';
+        $returnUrl = $_SERVER['REQUEST_URI'] ?? '/it490/pages/landing.php';
 
         if (!str_contains($returnUrl, 'login.php')) {
             $_SESSION['return_url'] = $returnUrl;
         }
 
-        header("Location: /pages/login.php");
+        header("Location: /it490/pages/login.php");
         exit();
     }
 }
@@ -51,7 +51,7 @@ function requireAuth(): void {
 // Get and clear the return URL from session or fallback to landing page
 function getReturnUrl(): string {
     startSecureSession();
-    $url = $_SESSION['return_url'] ?? '/pages/landing.php';
+    $url = $_SESSION['return_url'] ?? '/it490/pages/landing.php';
     unset($_SESSION['return_url']);
     return $url;
 }
@@ -60,6 +60,16 @@ function getReturnUrl(): string {
 function hasRole(string $role): bool {
     startSecureSession();
     return isset($_SESSION['user']['role']) && $_SESSION['user']['role'] === $role;
+}
+
+// Convenience check for owner role (some databases may use 'owner' or 'user')
+function isOwner(): bool {
+    return hasRole('user') || hasRole('owner');
+}
+
+// Convenience check for sitter role
+function isSitter(): bool {
+    return hasRole('sitter');
 }
 
 // Convenience check for admin role

@@ -18,7 +18,7 @@ function sendMessage(array $payload): array {
             break;
 
         case 'register':
-            foreach (['username','email','password'] as $f) {
+            foreach (['username', 'email', 'password'] as $f) {
                 if (empty($payload[$f])) {
                     throw new InvalidArgumentException("$f is required");
                 }
@@ -29,7 +29,7 @@ function sendMessage(array $payload): array {
             break;
 
         case 'update_profile':
-            foreach (['user_id','username','email'] as $f) {
+            foreach (['user_id', 'username', 'email'] as $f) {
                 if (empty($payload[$f])) {
                     throw new InvalidArgumentException("$f is required");
                 }
@@ -41,7 +41,74 @@ function sendMessage(array $payload): array {
 
         case 'logout':
             if (empty($payload['user_id'])) {
-                throw new InvalidArgumentException("user_id is required for logout");
+                throw new InvalidArgumentException('user_id is required for logout');
+            }
+            break;
+
+        case 'add_dog':
+            foreach (['owner_id', 'name', 'breed'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
+                }
+            }
+            break;
+
+        case 'list_dogs':
+            if (empty($payload['owner_id'])) {
+                throw new InvalidArgumentException('owner_id is required');
+            }
+            break;
+
+        case 'get_dog':
+            if (empty($payload['dog_id'])) {
+                throw new InvalidArgumentException('dog_id is required');
+            }
+            break;
+
+        case 'update_dog':
+            foreach (['dog_id', 'owner_id', 'name', 'breed'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
+                }
+            }
+            break;
+
+        case 'get_sitter_profile':
+        case 'update_sitter_profile':
+            if (empty($payload['user_id'])) {
+                throw new InvalidArgumentException('user_id is required');
+            }
+            break;
+
+        case 'list_sitters':
+            // no validation needed
+            break;
+
+        case 'grant_dog_access':
+            foreach (['dog_id', 'sitter_id', 'owner_id'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
+                }
+            }
+            break;
+
+        case 'list_active_dogs':
+            if (empty($payload['sitter_id'])) {
+                throw new InvalidArgumentException('sitter_id is required');
+            }
+            break;
+
+        case 'record_activity':
+            foreach (['dog_id', 'sitter_id', 'description'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
+                }
+            }
+            break;
+
+        case 'list_activities':
+            if (empty($payload['dog_id'])) {
+                throw new InvalidArgumentException('dog_id is required');
             }
             break;
 
@@ -50,7 +117,22 @@ function sendMessage(array $payload): array {
     }
 
     try {
-        $connection = new AMQPStreamConnection('100.87.203.113', 5672, 'kac63', 'Linklinkm1!');
+        $connection = new AMQPStreamConnection(
+            '100.87.203.113',
+            5672,
+            'kac63',
+            'Linklinkm1!',
+            '/',
+            false,
+            'AMQPLAIN',
+            null,
+            'en_US',
+            30.0,
+            30.0,
+            null,
+            false,
+            30
+        );
         $channel = $connection->channel();
         $channel->queue_declare('user_request_queue', false, false, false, false);
 
@@ -65,6 +147,8 @@ function sendMessage(array $payload): array {
         $channel->basic_publish($msg, '', 'user_request_queue');
 
         $response = null;
+        $timeout = 0;
+        $maxTimeout = 30;
 
         $channel->basic_consume($callbackQueue, '', false, true, true, false,
             function ($rep) use (&$response, $corrId) {
@@ -73,16 +157,27 @@ function sendMessage(array $payload): array {
                 }
             });
 
-        while (!$response) {
-            $channel->wait();
+        while (!$response && $timeout < $maxTimeout) {
+            try {
+                $channel->wait(null, false, 1);
+                $timeout++;
+            } catch (Exception $e) {
+                $timeout++;
+                continue;
+            }
         }
 
         $channel->close();
         $connection->close();
 
+        if (!$response) {
+            return ['status' => 'error', 'message' => 'Request timeout - worker may not be running'];
+        }
+
         return $response;
+
     } catch (Exception $e) {
         error_log('MQ Connection failed: ' . $e->getMessage());
-        return ['status'=>'error','message'=>'Failed to send message: '.$e->getMessage()];
+        return ['status' => 'error', 'message' => 'Failed to send message: ' . $e->getMessage()];
     }
 }
