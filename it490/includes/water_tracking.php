@@ -22,9 +22,11 @@ if (!$dog || $dog['owner_id'] != $_SESSION['user']['id']) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $amount = (int)($_POST['amount'] ?? 0);
     $resp = sendMessage([
-        'type' => 'record_water',
+        'type' => 'add_water',
         'dog_id' => $dogId,
-        'amount' => $amount
+        'user_id' => $_SESSION['user']['id'] ?? 0,
+        'amount' => $amount,
+        'notes' => ''
     ]);
     
     if (($resp['status'] ?? '') === 'success') {
@@ -38,9 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Get water history
-$waterResp = sendMessage(['type' => 'get_water_history', 'dog_id' => $dogId]);
-$waterData = ($waterResp['status'] ?? '') === 'success' ? ($waterResp['water'] ?? []) : [];
-$percentage = ($waterResp['percentage'] ?? 0);
+$waterResp = sendMessage(['type' => 'get_water', 'dog_id' => $dogId]);
+$waterData = ($waterResp['status'] ?? '') === 'success' ? ($waterResp['entries'] ?? []) : [];
+$percentage = 0;
 
 $title = "Water Tracking - " . htmlspecialchars($dog['name']);
 include_once __DIR__ . '/../header.php';
@@ -137,3 +139,4 @@ include_once __DIR__ . '/../header.php';
 </style>
 
 <?php include_once __DIR__ . '/../footer.php'; ?>
+

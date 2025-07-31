@@ -7,6 +7,10 @@ include_once __DIR__ . '/../includes/mq_client.php';
 $dogId = intval($_GET['dog_id'] ?? 0);
 if (!$dogId) { die('Dog not specified'); }
 
+
+$waterResp = [];
+$feedback = trim($_GET['msg'] ?? '');
+
 // Add water entry
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $payload = [
@@ -16,8 +20,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'amount' => intval($_POST['amount']),
         'notes' => trim($_POST['notes'])
     ];
+
     $waterResp = sendMessage($payload);
+
+    $msg = $waterResp['message'] ?? '';
+    header('Location: water.php?dog_id=' . $dogId . '&msg=' . urlencode($msg));
+    exit;
 }
+
+if ($feedback && empty($waterResp['message'])) {
+    $waterResp['message'] = $feedback;
+}
+
 
 // Get water entries
 $waterEntries = [];
