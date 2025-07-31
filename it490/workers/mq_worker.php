@@ -404,6 +404,9 @@ $callback = function ($msg) use ($channel, $conn) {
                     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                     $response = ['status' => 'success', 'achievements' => $rows];
                     break;
+                
+                case 'get_sitters':
+                    $stmt = $conn->prepare("SELECT * FROM SITTERS ORDER BY ")
 
             default:
                 $response['message'] = "Unsupported action type";
