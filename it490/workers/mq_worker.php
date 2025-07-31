@@ -295,6 +295,9 @@ $callback = function ($msg) use ($channel, $conn) {
                     $stmt->bind_param("iis", $payload['dog_id'], $payload['user_id'], $payload['note']);
                     if ($stmt->execute()) {
                         $response = ['status' => 'success', 'message' => 'Care log added'];
+                        $stmt = $conn->prepare("INSERT INTO USER_POINTS (user_id, points) VALUES (?, 5) ON DUPLICATE KEY UPDATE points = points + 5");
+                        $stmt->bind_param("i", $payload['user_id']);
+                        $stmt->execute();
                     } else {
                         $response['message'] = 'Failed to add care log: ' . $conn->error;
                     }
@@ -313,6 +316,9 @@ $callback = function ($msg) use ($channel, $conn) {
                     $stmt->bind_param("iissss", $payload['dog_id'], $payload['user_id'], $payload['medication'], $payload['dosage'], $payload['schedule_time'], $payload['notes']);
                     if ($stmt->execute()) {
                         $response = ['status' => 'success', 'message' => 'Medication scheduled'];
+                        $stmt = $conn->prepare("INSERT INTO USER_POINTS (user_id, points) VALUES (?, 5) ON DUPLICATE KEY UPDATE points = points + 5");
+                        $stmt->bind_param("i", $payload['user_id']);
+                        $stmt->execute();
                     } else {
                         $response['message'] = 'Failed to schedule medication: ' . $conn->error;
                     }
@@ -323,6 +329,17 @@ $callback = function ($msg) use ($channel, $conn) {
                     $stmt->bind_param("i", $payload['med_id']);
                     $stmt->execute();
                     $response = ['status' => 'success'];
+                    if ($stmt->affected_rows > 0) {
+                        $stmt = $conn->prepare("SELECT user_id FROM MEDICATION_SCHEDULES WHERE id = ?");
+                        $stmt->bind_param("i", $payload['med_id']);
+                        $stmt->execute();
+                        $uid = $stmt->get_result()->fetch_assoc()['user_id'] ?? 0;
+                        if ($uid) {
+                            $stmt = $conn->prepare("INSERT INTO USER_POINTS (user_id, points) VALUES (?, 5) ON DUPLICATE KEY UPDATE points = points + 5");
+                            $stmt->bind_param("i", $uid);
+                            $stmt->execute();
+                        }
+                    }
                     break;
 
                 case 'get_medications':
@@ -338,6 +355,9 @@ $callback = function ($msg) use ($channel, $conn) {
                     $stmt->bind_param("iiss", $payload['dog_id'], $payload['user_id'], $payload['behavior'], $payload['notes']);
                     if ($stmt->execute()) {
                         $response = ['status' => 'success', 'message' => 'Behavior entry added'];
+                        $stmt = $conn->prepare("INSERT INTO USER_POINTS (user_id, points) VALUES (?, 5) ON DUPLICATE KEY UPDATE points = points + 5");
+                        $stmt->bind_param("i", $payload['user_id']);
+                        $stmt->execute();
                     } else {
                         $response['message'] = 'Failed to add behavior entry: ' . $conn->error;
                     }
