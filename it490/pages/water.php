@@ -4,13 +4,16 @@ requireAuth();
 
 $user = $_SESSION['user'];
 include_once __DIR__ . '/../includes/mq_client.php';
+
 $dogId = intval($_GET['dog_id'] ?? 0);
-if (!$dogId) { die('Dog not specified'); }
+if (!$dogId) {
+    die('Dog not specified');
+}
 
 $waterResp = [];
-$feedback = trim($_GET['msg'] ?? '');
+$msg = trim($_GET['msg'] ?? '');
 
-// Add water entry
+// Handle form POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $payload = [
         'type' => 'add_water',
@@ -20,24 +23,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'notes' => trim($_POST['notes'])
     ];
     $waterResp = sendMessage($payload);
-    $msg = urlencode($waterResp['message'] ?? '');
-    header("Location: water.php?dog_id={$dogId}&msg={$msg}");
+
+    // Redirect using PRG pattern
+    $redirectMsg = urlencode($waterResp['message'] ?? '');
+    header("Location: water.php?dog_id={$dogId}&msg={$redirectMsg}");
     exit();
 }
 
-if ($feedback && empty($waterResp['message'])) {
-    $waterResp['message'] = $feedback;
+// Show feedback if redirected
+if ($msg) {
+    $waterResp['message'] = $msg;
 }
 
-
-// Get water entries
+// Fetch water entries
 $waterEntries = [];
 $resp = sendMessage(['type' => 'get_water', 'dog_id' => $dogId]);
-if ($resp['status'] === 'success') { $waterEntries = $resp['entries']; }
+if ($resp['status'] === 'success') {
+    $waterEntries = $resp['entries'];
+}
 ?>
 <?php
-    $title = "Water Tracking";
-    include_once __DIR__ . '/../header.php';
+$title = "Water Tracking";
+include_once __DIR__ . '/../header.php';
 ?>
 <div class="water-container">
     <h2>Water Tracking for Dog #<?= $dogId ?></h2>
