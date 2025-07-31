@@ -9,7 +9,7 @@ if (!$dogId) { die('Dog not specified'); }
 
 $waterResp = [];
 
-// Add water entry using PRG pattern
+// Add water entry
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $payload = [
         'type' => 'add_water',
@@ -19,16 +19,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'notes' => trim($_POST['notes'])
     ];
     $waterResp = sendMessage($payload);
-    if ($waterResp['status'] === 'success') {
-        $msg = urlencode($waterResp['message'] ?? '');
-        header("Location: water.php?dog_id={$dogId}&msg={$msg}");
-        exit;
-    }
 }
 
-if (isset($_GET['msg'])) {
-    $waterResp['message'] = $_GET['msg'];
-}
 
 // Get water entries
 $waterEntries = [];
