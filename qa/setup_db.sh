@@ -59,6 +59,48 @@ CREATE TABLE IF NOT EXISTS DOG_TASKS (
     FOREIGN KEY (dog_id) REFERENCES DOGS(id),
     FOREIGN KEY (user_id) REFERENCES USERS(id)
 );
+
+# New tables for care logs, medication scheduling, behavior tracking, and user points
+CREATE TABLE IF NOT EXISTS CARE_LOGS (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    dog_id INT NOT NULL,
+    user_id INT NOT NULL,
+    note TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (dog_id) REFERENCES DOGS(id),
+    FOREIGN KEY (user_id) REFERENCES USERS(id)
+);
+
+CREATE TABLE IF NOT EXISTS MEDICATION_SCHEDULES (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    dog_id INT NOT NULL,
+    user_id INT NOT NULL,
+    medication VARCHAR(100) NOT NULL,
+    dosage VARCHAR(100),
+    schedule_time DATETIME,
+    notes TEXT,
+    completed TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (dog_id) REFERENCES DOGS(id),
+    FOREIGN KEY (user_id) REFERENCES USERS(id)
+);
+
+CREATE TABLE IF NOT EXISTS BEHAVIOR_LOGS (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    dog_id INT NOT NULL,
+    user_id INT NOT NULL,
+    behavior VARCHAR(255) NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (dog_id) REFERENCES DOGS(id),
+    FOREIGN KEY (user_id) REFERENCES USERS(id)
+);
+
+CREATE TABLE IF NOT EXISTS USER_POINTS (
+    user_id INT PRIMARY KEY,
+    points INT DEFAULT 0,
+    FOREIGN KEY (user_id) REFERENCES USERS(id)
+);
 EOF
 
 echo "=== [DB SETUP] MySQL DB setup complete ==="

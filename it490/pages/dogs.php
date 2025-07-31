@@ -61,6 +61,9 @@ $stmt->close();
                 <strong><?= htmlspecialchars($d['name']) ?></strong> (<?= htmlspecialchars($d['breed']) ?>)
                 - <a href="tasks.php?dog_id=<?= $d['id'] ?>">Tasks</a>
                 - <a href="water.php?dog_id=<?= $d['id'] ?>">Water</a>
+                - <a href="care.php?dog_id=<?= $d['id'] ?>">Care Logs</a>
+                - <a href="medications.php?dog_id=<?= $d['id'] ?>">Medications</a>
+                - <a href="behavior.php?dog_id=<?= $d['id'] ?>">Behavior</a>
             </li>
         <?php endforeach; ?>
     </ul>

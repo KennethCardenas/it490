@@ -23,6 +23,10 @@
                             <i class="fas fa-paw"></i>
                             <span>Dogs</span>
                         </a>
+                        <a href="/it490/pages/gamification.php" class="nav-link">
+                            <i class="fas fa-star"></i>
+                            <span>Points</span>
+                        </a>
                         <a href="/it490/pages/logout.php" class="nav-link">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Logout</span>

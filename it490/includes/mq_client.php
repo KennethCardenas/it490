@@ -85,13 +85,67 @@ function sendMessage(array $payload): array {
                 }
                 break;
                 
-            case 'add_water':
-                foreach (['dog_id','user_id','amount'] as $f) {
-                    if (empty($payload[$f])) {
-                        throw new InvalidArgumentException("$f is required");
-                    }
+        case 'add_water':
+            foreach (['dog_id','user_id','amount'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
                 }
-                break;
+            }
+            break;
+
+        case 'add_care_log':
+            foreach (['dog_id','user_id','note'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
+                }
+            }
+            break;
+
+        case 'get_care_logs':
+            if (empty($payload['dog_id'])) {
+                throw new InvalidArgumentException('dog_id is required');
+            }
+            break;
+
+        case 'schedule_medication':
+            foreach (['dog_id','user_id','medication','schedule_time'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
+                }
+            }
+            break;
+
+        case 'complete_medication':
+            if (empty($payload['med_id'])) {
+                throw new InvalidArgumentException('med_id is required');
+            }
+            break;
+
+        case 'get_medications':
+            if (empty($payload['dog_id'])) {
+                throw new InvalidArgumentException('dog_id is required');
+            }
+            break;
+
+        case 'add_behavior':
+            foreach (['dog_id','user_id','behavior'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
+                }
+            }
+            break;
+
+        case 'get_behaviors':
+            if (empty($payload['dog_id'])) {
+                throw new InvalidArgumentException('dog_id is required');
+            }
+            break;
+
+        case 'get_points':
+            if (empty($payload['user_id'])) {
+                throw new InvalidArgumentException('user_id is required');
+            }
+            break;
 
         default:
             throw new InvalidArgumentException("Unsupported message type: {$payload['type']}");
