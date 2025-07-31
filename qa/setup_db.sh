@@ -101,6 +101,31 @@ CREATE TABLE IF NOT EXISTS USER_POINTS (
     points INT DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES USERS(id)
 );
+
+# Tables for achievements/badges
+CREATE TABLE IF NOT EXISTS ACHIEVEMENTS (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(50) UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    badge_img VARCHAR(255)
+);
+
+CREATE TABLE IF NOT EXISTS USER_ACHIEVEMENTS (
+    user_id INT NOT NULL,
+    achievement_id INT NOT NULL,
+    earned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, achievement_id),
+    FOREIGN KEY (user_id) REFERENCES USERS(id),
+    FOREIGN KEY (achievement_id) REFERENCES ACHIEVEMENTS(id)
+);
+
+# default achievements
+INSERT IGNORE INTO ACHIEVEMENTS (code, name, description, badge_img) VALUES
+ ('first_care_log', 'Care Novice', 'Logged your first care entry', '/it490/images/badges/first_care_log.png'),
+ ('first_med_schedule', 'Med Prepper', 'Scheduled your first medication', '/it490/images/badges/first_med_schedule.png'),
+ ('first_behavior_log', 'Behavior Tracker', 'Recorded your first behavior log', '/it490/images/badges/first_behavior_log.png'),
+ ('first_task_complete', 'Task Master', 'Completed your first dog task', '/it490/images/badges/first_task_complete.png');
 EOF
 
 echo "=== [DB SETUP] MySQL DB setup complete ==="

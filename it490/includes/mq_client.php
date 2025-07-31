@@ -147,6 +147,12 @@ function sendMessage(array $payload): array {
             }
             break;
 
+        case 'get_achievements':
+            if (empty($payload['user_id'])) {
+                throw new InvalidArgumentException('user_id is required');
+            }
+            break;
+
         default:
             throw new InvalidArgumentException("Unsupported message type: {$payload['type']}");
     }

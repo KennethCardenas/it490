@@ -41,6 +41,20 @@ function checkDuplicateCredentials($conn, $username, $email, $excludeUserId = nu
     return $errors;
 }
 
+function awardAchievement(mysqli $conn, int $userId, string $code): void {
+    $stmt = $conn->prepare("SELECT id FROM ACHIEVEMENTS WHERE code = ?");
+    $stmt->bind_param("s", $code);
+    $stmt->execute();
+    $ach = $stmt->get_result()->fetch_assoc();
+    if (!$ach) {
+        return; // achievement not defined
+    }
+    $aid = $ach['id'];
+    $stmt = $conn->prepare("INSERT IGNORE INTO USER_ACHIEVEMENTS (user_id, achievement_id) VALUES (?, ?)");
+    $stmt->bind_param("ii", $userId, $aid);
+    $stmt->execute();
+}
+
 try {
     $connection = new AMQPStreamConnection('100.87.203.113', 5672, 'kac63', 'Linklinkm1!');
     echo " [*] Connected to RabbitMQ at 100.87.203.113\n";
@@ -241,7 +255,7 @@ $callback = function ($msg) use ($channel, $conn) {
                             $response = ['status' => 'success', 'tasks' => $tasks];
                             break;
             
-                        case 'toggle_task':
+                case 'toggle_task':
                             $stmt = $conn->prepare("SELECT completed, user_id FROM DOG_TASKS WHERE id = ?");
                             $stmt->bind_param("i", $payload['task_id']);
                             $stmt->execute();
@@ -258,6 +272,7 @@ $callback = function ($msg) use ($channel, $conn) {
                                 $stmt = $conn->prepare("INSERT INTO USER_POINTS (user_id, points) VALUES (?, 10) ON DUPLICATE KEY UPDATE points = points + 10");
                                 $stmt->bind_param("i", $userForPoints);
                                 $stmt->execute();
+                                awardAchievement($conn, $userForPoints, 'first_task_complete');
                             }
                             break;
             case 'logout':
@@ -298,6 +313,7 @@ $callback = function ($msg) use ($channel, $conn) {
                         $stmt = $conn->prepare("INSERT INTO USER_POINTS (user_id, points) VALUES (?, 5) ON DUPLICATE KEY UPDATE points = points + 5");
                         $stmt->bind_param("i", $payload['user_id']);
                         $stmt->execute();
+                        awardAchievement($conn, $payload['user_id'], 'first_care_log');
                     } else {
                         $response['message'] = 'Failed to add care log: ' . $conn->error;
                     }
@@ -319,6 +335,7 @@ $callback = function ($msg) use ($channel, $conn) {
                         $stmt = $conn->prepare("INSERT INTO USER_POINTS (user_id, points) VALUES (?, 5) ON DUPLICATE KEY UPDATE points = points + 5");
                         $stmt->bind_param("i", $payload['user_id']);
                         $stmt->execute();
+                        awardAchievement($conn, $payload['user_id'], 'first_med_schedule');
                     } else {
                         $response['message'] = 'Failed to schedule medication: ' . $conn->error;
                     }
@@ -358,6 +375,7 @@ $callback = function ($msg) use ($channel, $conn) {
                         $stmt = $conn->prepare("INSERT INTO USER_POINTS (user_id, points) VALUES (?, 5) ON DUPLICATE KEY UPDATE points = points + 5");
                         $stmt->bind_param("i", $payload['user_id']);
                         $stmt->execute();
+                        awardAchievement($conn, $payload['user_id'], 'first_behavior_log');
                     } else {
                         $response['message'] = 'Failed to add behavior entry: ' . $conn->error;
                     }
@@ -377,6 +395,14 @@ $callback = function ($msg) use ($channel, $conn) {
                     $stmt->execute();
                     $points = $stmt->get_result()->fetch_assoc()['points'] ?? 0;
                     $response = ['status' => 'success', 'points' => (int)$points];
+                    break;
+
+                case 'get_achievements':
+                    $stmt = $conn->prepare("SELECT A.code, A.name, A.description, A.badge_img, UA.earned_at FROM USER_ACHIEVEMENTS UA JOIN ACHIEVEMENTS A ON UA.achievement_id = A.id WHERE UA.user_id = ?");
+                    $stmt->bind_param("i", $payload['user_id']);
+                    $stmt->execute();
+                    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                    $response = ['status' => 'success', 'achievements' => $rows];
                     break;
 
             default:
