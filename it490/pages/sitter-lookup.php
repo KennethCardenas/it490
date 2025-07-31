@@ -3,7 +3,7 @@ include_once __DIR__ . '/../auth.php';
 requireAuth();
 
 $user = $_SESSION['user'];
-include_once __DIR__ . '/../includes/mq_client.php';
+require_once __DIR__ . '/../api/connect.php';
 
 $resp = sendMessage(['type' => 'get_sitters']);
 
