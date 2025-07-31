@@ -8,6 +8,7 @@ $dogId = intval($_GET['dog_id'] ?? 0);
 if (!$dogId) { die('Dog not specified'); }
 
 $waterResp = [];
+$feedback = trim($_GET['msg'] ?? '');
 
 // Add water entry
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -19,6 +20,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'notes' => trim($_POST['notes'])
     ];
     $waterResp = sendMessage($payload);
+    $msg = urlencode($waterResp['message'] ?? '');
+    header("Location: water.php?dog_id={$dogId}&msg={$msg}");
+    exit();
+}
+
+if ($feedback && empty($waterResp['message'])) {
+    $waterResp['message'] = $feedback;
 }
 
 
