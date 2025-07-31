@@ -22,6 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'amount' => intval($_POST['amount']),
         'notes' => trim($_POST['notes'])
     ];
+
     $waterResp = sendMessage($payload);
 
     // Redirect using PRG pattern
@@ -87,3 +88,4 @@ include_once __DIR__ . '/../header.php';
     </div>
 </div>
 <?php include_once __DIR__ . '/../footer.php'; ?>
+
