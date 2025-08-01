@@ -41,7 +41,7 @@ if (!empty($bio)) {
 }
 if (!empty($experience)) {
     $sql .= " AND experience_years >= ?";
-    $params[] = (int)$experience;
+    $params[] = (int)$experience_years;
     $types .= 'i';
 }
 if (!empty($rating)) {
@@ -71,7 +71,7 @@ while ($row = $result->fetch_assoc()) {
         <input name="id" placeholder="Sitter ID" type="number">
         <input name="user_id" placeholder="User ID" type="number">
         <input name="bio" placeholder="Bio">
-        <input name="experience" type="number" placeholder="Years of Experience">
+        <input name="experience_years" type="number" placeholder="Years of Experience">
         <input name="rating" type="number" step="0.1" min="0" max="5" placeholder="Rating">
         <br>
         <button type="submit">Search</button>
