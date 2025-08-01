@@ -10,6 +10,8 @@ function sendMessage(array $payload): array {
         throw new InvalidArgumentException('Payload must contain a type');
     }
 
+    $payload['type'] = strtolower(trim($payload['type']));
+
     switch ($payload['type']) {
         case 'login':
             if (empty($payload['username']) || empty($payload['password'])) {
@@ -50,6 +52,12 @@ function sendMessage(array $payload): array {
         case 'get_dogs':
             if (empty($payload['user_id'])) {
                 throw new InvalidArgumentException('user_id is required');
+            }
+            break;
+
+        case 'get_dog':
+            if (empty($payload['dog_id'])) {
+                throw new InvalidArgumentException('dog_id is required');
             }
             break;
 

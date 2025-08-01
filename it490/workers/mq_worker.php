@@ -72,9 +72,10 @@ $callback = function ($msg) use ($channel, $conn) {
     try {
         $payload = json_decode($msg->body, true);
         $response = ['status' => 'error', 'message' => 'Unknown action'];
-        echo " [x] Processing: " . ($payload['type'] ?? 'unknown') . "\n";
+        $payload['type'] = strtolower(trim($payload['type'] ?? ''));
+        echo " [x] Processing: " . ($payload['type'] ?: 'unknown') . "\n";
 
-        switch ($payload['type'] ?? '') {
+        switch ($payload['type']) {
             case 'login':
                 $credential = validateEmailOrUsername($payload['username']);
                 $query = "SELECT id, username, email, password FROM USERS WHERE {$credential['field']} = ?";
@@ -233,6 +234,18 @@ $callback = function ($msg) use ($channel, $conn) {
                             $res = $stmt->get_result();
                             $dogs = $res->fetch_all(MYSQLI_ASSOC);
                             $response = ['status' => 'success', 'dogs' => $dogs];
+                            break;
+
+                        case 'get_dog':
+                            $stmt = $conn->prepare("SELECT * FROM DOGS WHERE id = ?");
+                            $stmt->bind_param("i", $payload['dog_id']);
+                            $stmt->execute();
+                            $dog = $stmt->get_result()->fetch_assoc();
+                            if ($dog) {
+                                $response = ['status' => 'success', 'dog' => $dog];
+                            } else {
+                                $response['message'] = 'Dog not found';
+                            }
                             break;
             
                         case 'add_task':
@@ -407,7 +420,8 @@ $callback = function ($msg) use ($channel, $conn) {
 
             default:
                 $response['message'] = "Unsupported action type";
-                echo " [?] Unknown message type\\n";
+                $unknown = $payload['type'] ?? 'unknown';
+                echo " [?] Unknown message type: $unknown\\n";
                 break;
         }
 
