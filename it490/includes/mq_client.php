@@ -92,7 +92,73 @@ function sendMessage(array $payload): array {
                     }
                 }
                 break;
+            
+            case 'invite_create':
+                foreach (['user_id','dog_id','sitter_email','permission_level'] as $f) {
+                    if (empty($payload[$f])) {
+                        throw new InvalidArgumentException("$f is required");
+                    }
+                }
+                break;
 
+            case 'invite_list':
+                if (empty($payload['user_id'])) {
+                        throw new InvalidArgumentException('user_id is required');
+                }
+                break;
+
+            case 'invite_update':
+                foreach (['id','status'] as $f) {
+                    if (empty($payload[$f])) {
+                        throw new InvalidArgumentException("$f is required");
+                    }
+                }
+                break;
+            
+            case 'playdates_list':
+                break;
+
+            case 'playdate_request':
+                foreach (['user_id','target_owner_id','location_preference'] as $f) {
+                    if (empty($payload[$f])) {
+                        throw new InvalidArgumentException("$f is required");
+                    }
+                }
+                break;
+
+            case 'playdate_requests_list':
+                if (empty($payload['user_id'])) {
+                    throw new InvalidArgumentException('user_id is required');
+                }
+                break;
+
+            case 'playdate_requests_update':
+                foreach (['id','status'] as $f) {
+                    if (empty($payload[$f])) {
+                        throw new InvalidArgumentException("$f is required");
+                    }
+                }
+                break;
+            
+            case 'lost_dogs_create':
+                foreach (['user_id','dog_id','dog_name','last_lat','last_lng','alert_radius'] as $f) {
+                    if (!isset($payload[$f]) || $payload[$f] === '') {
+                        throw new InvalidArgumentException("$f is required");
+                    }
+                }
+                break;
+
+            case 'lost_dogs_list':
+                // no additional args
+                break;
+
+            case 'lost_dogs_update':
+                foreach (['id','status'] as $f) {
+                    if (empty($payload[$f])) {
+                        throw new InvalidArgumentException("$f is required");
+                    }
+                }
+                break;
         default:
             throw new InvalidArgumentException("Unsupported message type: {$payload['type']}");
     }
