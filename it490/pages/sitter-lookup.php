@@ -32,13 +32,25 @@ $stmt->close();
         </form>
     </div>
     <div>
-        <ul>
+        <table border="1">
+            <tr>
+                <th>ID</th>
+                <th>USER ID</th>
+                <th>BIO</th>
+                <th>AVAILABILITY</th>
+                <th>Rating</th>
+            </tr>
+
             <?php foreach ($sitters as $sitter): ?>
-                <li>
-                    <p><?=$sitter?></p>
-                </li>
+                <tr>
+                    <td><?= htmlspecialchars($sitter['id']) ?></td>
+                    <td><?= htmlspecialchars($sitter['user_id']) ?></td>
+                    <td><?= htmlspecialchars($sitter['bio']) ?></td>
+                    <td><?= htmlspecialchars($sitter['availability']) ?></td>
+                    <td><?= htmlspecialchars($sitter['rating']) ?></td>
+                </tr>
             <?php endforeach; ?>
-        </ul>
+        </table>
     </div>
 </html>
 <?php include_once __DIR__ . '/../footer.php'; ?>
