@@ -80,6 +80,23 @@ CREATE TABLE IF NOT EXISTS DOGS (
     CONSTRAINT DOGS_ibfk_1 FOREIGN KEY (owner_id) REFERENCES USERS (id)
 );
 
+# Table for managing tasks assigned to a dog
+CREATE TABLE IF NOT EXISTS DOG_TASKS (
+    id INT NOT NULL AUTO_INCREMENT,
+    dog_id INT NOT NULL,
+    user_id INT NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    description TEXT,
+    due_date DATETIME,
+    completed TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY (dog_id),
+    KEY (user_id),
+    CONSTRAINT DOG_TASKS_ibfk_1 FOREIGN KEY (dog_id) REFERENCES DOGS(id),
+    CONSTRAINT DOG_TASKS_ibfk_2 FOREIGN KEY (user_id) REFERENCES USERS(id)
+);
+
 -- Batch 4: Meals, Medications, Sitters
 CREATE TABLE IF NOT EXISTS MEAL_TRACKING (
     id INT NOT NULL AUTO_INCREMENT,
