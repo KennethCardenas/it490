@@ -47,18 +47,26 @@ CREATE TABLE IF NOT EXISTS DOGS (
     FOREIGN KEY (user_id) REFERENCES USERS(id)
 );
 
+# Reset DOG_TASKS to ensure correct foreign key
+DROP TABLE IF EXISTS DOG_TASKS;
+
+# Table for managing tasks assigned to a dog
 CREATE TABLE IF NOT EXISTS DOG_TASKS (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT NOT NULL AUTO_INCREMENT,
     dog_id INT NOT NULL,
     user_id INT NOT NULL,
     title VARCHAR(100) NOT NULL,
     description TEXT,
     due_date DATETIME,
     completed TINYINT(1) DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (dog_id) REFERENCES DOGS(id),
-    FOREIGN KEY (user_id) REFERENCES USERS(id)
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY (dog_id),
+    KEY (user_id),
+    CONSTRAINT DOG_TASKS_ibfk_1 FOREIGN KEY (dog_id) REFERENCES DOGS(id),
+    CONSTRAINT DOG_TASKS_ibfk_2 FOREIGN KEY (user_id) REFERENCES USERS(id)
 );
+
 
 CREATE TABLE lost_dogs (
   id INT AUTO_INCREMENT PRIMARY KEY,
