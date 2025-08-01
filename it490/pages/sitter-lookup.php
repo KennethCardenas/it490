@@ -5,7 +5,6 @@ requireAuth();
 $user = $_SESSION['user'];
 require_once __DIR__ . '/../api/connect.php';
 
-// fetch sitters
 $sitters = [];
 $stmt = $conn->prepare("SELECT * FROM SITTERS");
 
@@ -15,20 +14,67 @@ if ($stmt->execute()) {
 }
 $stmt->close();
 
+$id = $_GET['id'] ?? '';
+$user_id = $_GET['user_id'] ?? '';
+$bio = $_GET['bio'] ?? '';
+$experience = $_GET['experience'] ?? '';
+$rating = $_GET['rating'] ?? '';
+
+$sql = "SELECT * FROM sitters WHERE 1=1";
+$params = [];
+$types = '';
+
+if (!empty($id)) {
+    $sql .= " AND id = ?";
+    $params[] = (int)$id;
+    $types .= 'i';
+}
+if (!empty($user_id)) {
+    $sql .= " AND user_id = ?";
+    $params[] = (int)$user_id;
+    $types .= 'i';
+}
+if (!empty($bio)) {
+    $sql .= " AND bio LIKE ?";
+    $params[] = "%$bio%";
+    $types .= 's';
+}
+if (!empty($experience)) {
+    $sql .= " AND experience_years >= ?";
+    $params[] = (int)$experience;
+    $types .= 'i';
+}
+if (!empty($rating)) {
+    $sql .= " AND rating >= ?";
+    $params[] = (float)$rating;
+    $types .= 'd';
+}
+
+$stmt = $conn->prepare($sql);
+if ($params) {
+    $stmt->bind_param($types, ...$params);
+}
+$stmt->execute();
+$result = $stmt->get_result();
+
+$sitters = [];
+while ($row = $result->fetch_assoc()) {
+    $sitters[] = $row;
+}
 ?>
 <?php $title = "Tasks"; include_once __DIR__ . '/../header.php'; ?>
 <html>
     <link rel="stylesheet" href="../styles/sitter-lookup.css">
     <h2>Sitter Lookup</h2>
     <div>
-        <form id="sitterSearchForm">
-            <input name="name" placeholder="Name">
-            <input name="email" placeholder="Email">
-            <input name="phone" placeholder="Phone">
-            <input name="experience" type="number" placeholder="Years of Experience">
-            <input name="rating" type="number" step="0.1" min="0" max="5" placeholder="Rating">
-            <br>
-            <button type="submit">Search</button>
+        <form id="sitterSearchForm" method="GET">
+        <input name="id" placeholder="Sitter ID" type="number">
+        <input name="user_id" placeholder="User ID" type="number">
+        <input name="bio" placeholder="Bio">
+        <input name="experience" type="number" placeholder="Years of Experience">
+        <input name="rating" type="number" step="0.1" min="0" max="5" placeholder="Rating">
+        <br>
+        <button type="submit">Search</button>
         </form>
     </div>
     <div>
