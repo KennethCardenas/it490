@@ -13,6 +13,26 @@ if (!file_exists($mqClientPath)) {
     die('MQ client system not available');
 }
 require_once $mqClientPath;
+require_once __DIR__ . '/../api/connect.php';
+
+function addTaskToDatabase($conn, $dogId, $userId, $title, $description, $dueDate) {
+    $stmt = $conn->prepare("INSERT INTO DOG_TASKS (dog_id, user_id, title, description, due_date) VALUES (?, ?, ?, ?, ?)");
+    $stmt->bind_param("iisss", $dogId, $userId, $title, $description, $dueDate);
+    return $stmt->execute();
+}
+
+function toggleTaskInDatabase($conn, $taskId) {
+    $stmt = $conn->prepare("UPDATE DOG_TASKS SET completed = NOT completed WHERE id = ?");
+    $stmt->bind_param("i", $taskId);
+    return $stmt->execute();
+}
+
+function getTasksFromDatabase($conn, $dogId) {
+    $stmt = $conn->prepare("SELECT * FROM DOG_TASKS WHERE dog_id = ? ORDER BY due_date");
+    $stmt->bind_param("i", $dogId);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
 
 $dogId = isset($_GET['dog_id']) ? (int)$_GET['dog_id'] : 0;
 if ($dogId <= 0) {
@@ -45,8 +65,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'due_date' => $dueDate
         ];
 
-        $taskResp = sendMessage($payload);
-        $redirectMsg = urlencode($taskResp['message'] ?? 'Task added successfully');
+        $taskResp = @sendMessage($payload);
+
+        if (empty($taskResp) || ($taskResp['status'] ?? '') !== 'success') {
+            if (addTaskToDatabase($conn, $dogId, $user['id'] ?? 0, $title, $description, $dueDate)) {
+                $redirectMsg = urlencode('Task added successfully');
+            } else {
+                throw new Exception('Failed to add task');
+            }
+        } else {
+            $redirectMsg = urlencode($taskResp['message'] ?? 'Task added successfully');
+        }
+
         header("Location: tasks.php?dog_id={$dogId}&msg={$redirectMsg}");
         exit();
     } catch (Exception $e) {
@@ -58,7 +88,10 @@ if (isset($_GET['toggle'])) {
     try {
         $taskId = (int)$_GET['toggle'];
         if ($taskId > 0) {
-            sendMessage(['type' => 'toggle_task', 'task_id' => $taskId]);
+            $resp = @sendMessage(['type' => 'toggle_task', 'task_id' => $taskId]);
+            if (empty($resp) || ($resp['status'] ?? '') !== 'success') {
+                toggleTaskInDatabase($conn, $taskId);
+            }
             header("Location: tasks.php?dog_id={$dogId}");
             exit();
         }
@@ -72,20 +105,31 @@ if ($msg) {
 }
 
 try {
-    $dogResp = sendMessage(['type' => 'get_dog', 'dog_id' => $dogId]);
+    $dogResp = @sendMessage(['type' => 'get_dog', 'dog_id' => $dogId]);
     if (($dogResp['status'] ?? '') === 'success') {
         $dog = $dogResp['dog'] ?? null;
+    } else {
+        $stmt = $conn->prepare("SELECT * FROM DOGS WHERE id = ?");
+        $stmt->bind_param("i", $dogId);
+        $stmt->execute();
+        $dog = $stmt->get_result()->fetch_assoc();
     }
 } catch (Exception $e) {
-
+    $stmt = $conn->prepare("SELECT * FROM DOGS WHERE id = ?");
+    $stmt->bind_param("i", $dogId);
+    $stmt->execute();
+    $dog = $stmt->get_result()->fetch_assoc();
 }
 
 try {
-    $resp = sendMessage(['type' => 'get_tasks', 'dog_id' => $dogId]);
+    $resp = @sendMessage(['type' => 'get_tasks', 'dog_id' => $dogId]);
     if (($resp['status'] ?? '') === 'success') {
         $tasks = $resp['tasks'] ?? [];
+    } else {
+        $tasks = getTasksFromDatabase($conn, $dogId);
     }
 } catch (Exception $e) {
+    $tasks = getTasksFromDatabase($conn, $dogId);
 }
 
 $title = "Tasks" . ($dog ? " - " . htmlspecialchars($dog['name']) : "");

@@ -2,12 +2,35 @@
 include_once __DIR__ . '/../auth.php';
 requireAuth();
 include_once __DIR__ . '/../includes/mq_client.php';
+require_once __DIR__ . '/../api/connect.php';
+
+function getPointsFromDatabase($conn, $userId) {
+    $stmt = $conn->prepare("SELECT points FROM USER_POINTS WHERE user_id = ?");
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    return (int)($stmt->get_result()->fetch_assoc()['points'] ?? 0);
+}
+
+function getAchievementsFromDatabase($conn, $userId) {
+    $stmt = $conn->prepare("SELECT A.code, A.name, A.description, A.badge_img, UA.earned_at FROM USER_ACHIEVEMENTS UA JOIN ACHIEVEMENTS A ON UA.achievement_id = A.id WHERE UA.user_id = ?");
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
 
 $user = $_SESSION['user'];
-$resp = sendMessage(['type' => 'get_points', 'user_id' => $user['id']]);
-$points = ($resp['status'] === 'success') ? $resp['points'] : 0;
-$achResp = sendMessage(['type' => 'get_achievements', 'user_id' => $user['id']]);
-$achievements = ($achResp['status'] === 'success') ? $achResp['achievements'] : [];
+$resp = @sendMessage(['type' => 'get_points', 'user_id' => $user['id']]);
+if (($resp['status'] ?? '') === 'success') {
+    $points = $resp['points'];
+} else {
+    $points = getPointsFromDatabase($conn, $user['id']);
+}
+$achResp = @sendMessage(['type' => 'get_achievements', 'user_id' => $user['id']]);
+if (($achResp['status'] ?? '') === 'success') {
+    $achievements = $achResp['achievements'] ?? [];
+} else {
+    $achievements = getAchievementsFromDatabase($conn, $user['id']);
+}
 ?>
 <?php $title = "Gamification"; include_once __DIR__ . '/../header.php'; ?>
 <div class="points-container">

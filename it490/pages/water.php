@@ -15,6 +15,20 @@ if (!file_exists($mqClientPath)) {
     die('MQ client system not available');
 }
 require_once $mqClientPath;
+require_once __DIR__ . '/../api/connect.php';
+
+function addWaterToDatabase($conn, $dogId, $userId, $amount, $notes) {
+    $stmt = $conn->prepare("INSERT INTO WATER_TRACKING (dog_id, user_id, amount_ml, notes) VALUES (?, ?, ?, ?)");
+    $stmt->bind_param("iiis", $dogId, $userId, $amount, $notes);
+    return $stmt->execute();
+}
+
+function getWaterFromDatabase($conn, $dogId) {
+    $stmt = $conn->prepare("SELECT * FROM WATER_TRACKING WHERE dog_id = ? ORDER BY timestamp DESC");
+    $stmt->bind_param("i", $dogId);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
 
 $dogId = isset($_GET['dog_id']) ? (int)$_GET['dog_id'] : 0;
 if ($dogId <= 0) {
@@ -47,8 +61,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'notes' => $notes
         ];
 
-        $waterResp = sendMessage($payload);
-        $redirectMsg = urlencode($waterResp['message'] ?? 'Water entry added successfully');
+        $waterResp = @sendMessage($payload);
+        if (empty($waterResp) || ($waterResp['status'] ?? '') !== 'success') {
+            if (addWaterToDatabase($conn, $dogId, $user['id'] ?? 0, $amount, $notes)) {
+                $redirectMsg = urlencode('Water entry added successfully');
+            } else {
+                throw new Exception('Failed to add water entry');
+            }
+        } else {
+            $redirectMsg = urlencode($waterResp['message'] ?? 'Water entry added successfully');
+        }
         header("Location: water.php?dog_id={$dogId}&msg={$redirectMsg}");
         exit();
     } catch (Exception $e) {
@@ -61,25 +83,38 @@ if ($msg) {
 }
 
 try {
-    $dogResp = sendMessage(['type' => 'get_dog', 'dog_id' => $dogId]);
+    $dogResp = @sendMessage(['type' => 'get_dog', 'dog_id' => $dogId]);
     if (($dogResp['status'] ?? '') === 'success') {
         $dog = $dogResp['dog'] ?? null;
+    } else {
+        $stmt = $conn->prepare("SELECT * FROM DOGS WHERE id = ?");
+        $stmt->bind_param("i", $dogId);
+        $stmt->execute();
+        $dog = $stmt->get_result()->fetch_assoc();
     }
 } catch (Exception $e) {
+    $stmt = $conn->prepare("SELECT * FROM DOGS WHERE id = ?");
+    $stmt->bind_param("i", $dogId);
+    $stmt->execute();
+    $dog = $stmt->get_result()->fetch_assoc();
 }
 
 try {
-    $resp = sendMessage(['type' => 'get_water', 'dog_id' => $dogId]);
+    $resp = @sendMessage(['type' => 'get_water', 'dog_id' => $dogId]);
     if (($resp['status'] ?? '') === 'success') {
         $waterEntries = $resp['entries'] ?? [];
-        $today = date('Y-m-d');
-        foreach ($waterEntries as $entry) {
-            if (isset($entry['timestamp']) && strpos($entry['timestamp'], $today) === 0) {
-                $totalToday += (int)($entry['amount_ml'] ?? 0);
-            }
-        }
+    } else {
+        $waterEntries = getWaterFromDatabase($conn, $dogId);
     }
 } catch (Exception $e) {
+    $waterEntries = getWaterFromDatabase($conn, $dogId);
+}
+
+$today = date('Y-m-d');
+foreach ($waterEntries as $entry) {
+    if (isset($entry['timestamp']) && strpos($entry['timestamp'], $today) === 0) {
+        $totalToday += (int)($entry['amount_ml'] ?? 0);
+    }
 }
 
 $title = "Water Tracking" . ($dog ? " - " . htmlspecialchars($dog['name']) : "");
