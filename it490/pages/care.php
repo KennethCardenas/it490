@@ -15,20 +15,14 @@ if (!file_exists($mqClientPath)) {
 require_once $mqClientPath;
 require_once __DIR__ . '/../api/connect.php';
 
-function addTaskToDatabase($conn, $dogId, $userId, $title, $description, $dueDate) {
-    $stmt = $conn->prepare("INSERT INTO DOG_TASKS (dog_id, user_id, title, description, due_date) VALUES (?, ?, ?, ?, ?)");
-    $stmt->bind_param("iisss", $dogId, $userId, $title, $description, $dueDate);
+function addCareLogToDatabase($conn, $dogId, $userId, $note) {
+    $stmt = $conn->prepare("INSERT INTO CARE_LOGS (dog_id, user_id, note) VALUES (?, ?, ?)");
+    $stmt->bind_param("iis", $dogId, $userId, $note);
     return $stmt->execute();
 }
 
-function toggleTaskInDatabase($conn, $taskId) {
-    $stmt = $conn->prepare("UPDATE DOG_TASKS SET completed = NOT completed WHERE id = ?");
-    $stmt->bind_param("i", $taskId);
-    return $stmt->execute();
-}
-
-function getTasksFromDatabase($conn, $dogId) {
-    $stmt = $conn->prepare("SELECT * FROM DOG_TASKS WHERE dog_id = ? ORDER BY due_date");
+function getCareLogsFromDatabase($conn, $dogId) {
+    $stmt = $conn->prepare("SELECT * FROM CARE_LOGS WHERE dog_id = ? ORDER BY created_at DESC");
     $stmt->bind_param("i", $dogId);
     $stmt->execute();
     return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -41,67 +35,47 @@ if ($dogId <= 0) {
 }
 
 $user = $_SESSION['user'] ?? null;
-$taskResp = [];
+$careResp = [];
 $msg = isset($_GET['msg']) ? trim($_GET['msg']) : '';
 $dog = null;
-$tasks = [];
+$logs = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        $title = isset($_POST['title']) ? trim($_POST['title']) : '';
-        $description = isset($_POST['description']) ? trim($_POST['description']) : '';
-        $dueDate = isset($_POST['due_date']) ? trim($_POST['due_date']) : '';
+        $note = isset($_POST['note']) ? trim($_POST['note']) : '';
         
-        if (empty($title) || empty($dueDate)) {
-            throw new Exception('Title and due date are required');
+        if (empty($note)) {
+            throw new Exception('Note is required');
         }
 
         $payload = [
-            'type' => 'add_task',
+            'type' => 'add_care_log',
             'dog_id' => $dogId,
             'user_id' => $user['id'] ?? 0,
-            'title' => $title,
-            'description' => $description,
-            'due_date' => $dueDate
+            'note' => $note
         ];
 
-        $taskResp = @sendMessage($payload);
+        $careResp = @sendMessage($payload);
 
-        if (empty($taskResp) || ($taskResp['status'] ?? '') !== 'success') {
-            if (addTaskToDatabase($conn, $dogId, $user['id'] ?? 0, $title, $description, $dueDate)) {
-                $redirectMsg = urlencode('Task added successfully');
+        if (empty($careResp) || ($careResp['status'] ?? '') !== 'success') {
+            if (addCareLogToDatabase($conn, $dogId, $user['id'] ?? 0, $note)) {
+                $redirectMsg = urlencode('Care log added successfully');
             } else {
-                throw new Exception('Failed to add task');
+                throw new Exception('Failed to add care log');
             }
         } else {
-            $redirectMsg = urlencode($taskResp['message'] ?? 'Task added successfully');
+            $redirectMsg = urlencode($careResp['message'] ?? 'Care log added successfully');
         }
 
-        header("Location: tasks.php?dog_id={$dogId}&msg={$redirectMsg}");
+        header("Location: care.php?dog_id={$dogId}&msg={$redirectMsg}");
         exit();
     } catch (Exception $e) {
-        $taskResp['message'] = 'Error: ' . $e->getMessage();
-    }
-}
-
-if (isset($_GET['toggle'])) {
-    try {
-        $taskId = (int)$_GET['toggle'];
-        if ($taskId > 0) {
-            $resp = @sendMessage(['type' => 'toggle_task', 'task_id' => $taskId]);
-            if (empty($resp) || ($resp['status'] ?? '') !== 'success') {
-                toggleTaskInDatabase($conn, $taskId);
-            }
-            header("Location: tasks.php?dog_id={$dogId}");
-            exit();
-        }
-    } catch (Exception $e) {
-        $taskResp['message'] = 'Error toggling task: ' . $e->getMessage();
+        $careResp['message'] = 'Error: ' . $e->getMessage();
     }
 }
 
 if ($msg) {
-    $taskResp['message'] = urldecode($msg);
+    $careResp['message'] = urldecode($msg);
 }
 
 try {
@@ -122,17 +96,17 @@ try {
 }
 
 try {
-    $resp = @sendMessage(['type' => 'get_tasks', 'dog_id' => $dogId]);
+    $resp = @sendMessage(['type' => 'get_care_logs', 'dog_id' => $dogId]);
     if (($resp['status'] ?? '') === 'success') {
-        $tasks = $resp['tasks'] ?? [];
+        $logs = $resp['logs'] ?? [];
     } else {
-        $tasks = getTasksFromDatabase($conn, $dogId);
+        $logs = getCareLogsFromDatabase($conn, $dogId);
     }
 } catch (Exception $e) {
-    $tasks = getTasksFromDatabase($conn, $dogId);
+    $logs = getCareLogsFromDatabase($conn, $dogId);
 }
 
-$title = "Tasks" . ($dog ? " - " . htmlspecialchars($dog['name']) : "");
+$title = "Care Logs" . ($dog ? " - " . htmlspecialchars($dog['name']) : "");
 
 $headerPath = __DIR__ . '/../header.php';
 if (file_exists($headerPath)) {
@@ -142,10 +116,10 @@ if (file_exists($headerPath)) {
 }
 ?>
 
-<div class="tasks-app">
-    <div class="tasks-header">
+<div class="care-app">
+    <div class="care-header">
         <div class="header-content">
-            <h1><i class="fas fa-tasks tasks-icon"></i> Task Management</h1>
+            <h1><i class="fas fa-notes-medical care-icon"></i> Care Logs</h1>
             <?php if ($dog): ?>
                 <h2>For <?= htmlspecialchars($dog['name']) ?> <i class="fas fa-paw paw-icon"></i></h2>
             <?php endif; ?>
@@ -153,83 +127,53 @@ if (file_exists($headerPath)) {
     </div>
 
     <div class="main-container">
-        <?php if (!empty($taskResp['message'])): ?>
-            <div class="alert <?= strpos($taskResp['message'], 'Error') !== false ? 'alert-error' : 'alert-success' ?>">
-                <i class="fas <?= strpos($taskResp['message'], 'Error') !== false ? 'fa-exclamation-circle' : 'fa-check-circle' ?>"></i>
-                <?= htmlspecialchars($taskResp['message']) ?>
+        <?php if (!empty($careResp['message'])): ?>
+            <div class="alert <?= strpos($careResp['message'], 'Error') !== false ? 'alert-error' : 'alert-success' ?>">
+                <i class="fas <?= strpos($careResp['message'], 'Error') !== false ? 'fa-exclamation-circle' : 'fa-check-circle' ?>"></i>
+                <?= htmlspecialchars($careResp['message']) ?>
             </div>
         <?php endif; ?>
 
         <div class="content-grid">
             <div class="form-card">
                 <div class="card-header">
-                    <i class="fas fa-plus-circle"></i> Add New Task
+                    <i class="fas fa-plus-circle"></i> Add Care Log
                 </div>
-                <form method="POST" class="task-form">
+                <form method="POST" class="care-form">
                     <div class="form-group">
-                        <label for="title"><i class="fas fa-heading"></i> Title</label>
-                        <input type="text" id="title" name="title" required placeholder="Enter task title">
-                    </div>
-                    <div class="form-group">
-                        <label for="due_date"><i class="fas fa-calendar-day"></i> Due Date</label>
-                        <input type="datetime-local" id="due_date" name="due_date" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="description"><i class="fas fa-align-left"></i> Description</label>
-                        <textarea id="description" name="description" placeholder="Enter task description"></textarea>
+                        <label for="note"><i class="fas fa-sticky-note"></i> Note</label>
+                        <textarea id="note" name="note" required placeholder="Enter care notes (feeding, grooming, etc.)"></textarea>
                     </div>
                     <button type="submit" class="btn-submit">
-                        <i class="fas fa-save"></i> Add Task
+                        <i class="fas fa-save"></i> Add Log
                     </button>
                 </form>
             </div>
 
             <div class="history-card">
                 <div class="card-header">
-                    <i class="fas fa-tasks"></i> Current Tasks
+                    <i class="fas fa-history"></i> Care History
                 </div>
-                <?php if (empty($tasks)): ?>
+                <?php if (empty($logs)): ?>
                     <div class="empty-state">
                         <i class="fas fa-clipboard-list"></i>
-                        <p>No tasks found</p>
+                        <p>No care logs found</p>
                     </div>
                 <?php else: ?>
-                    <div class="task-entries">
+                    <div class="care-entries">
                         <table>
                             <thead>
                                 <tr>
-                                    <th><i class="fas fa-heading"></i> Title</th>
-                                    <th><i class="fas fa-calendar-day"></i> Due Date</th>
-                                    <th><i class="fas fa-check-circle"></i> Status</th>
-                                    <th><i class="fas fa-cog"></i> Actions</th>
+                                    <th><i class="fas fa-sticky-note"></i> Note</th>
+                                    <th><i class="fas fa-clock"></i> Time</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($tasks as $task): ?>
+                                <?php foreach ($logs as $log): ?>
                                     <tr>
-                                        <td><?= htmlspecialchars($task['title'] ?? '') ?></td>
-                                        <td><?= isset($task['due_date']) ? date('M j, g:i a', strtotime($task['due_date'])) : '' ?></td>
-                                        <td>
-                                            <span class="status-badge <?= $task['completed'] ? 'completed' : 'pending' ?>">
-                                                <?= $task['completed'] ? 'Completed' : 'Pending' ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <a href="?dog_id=<?= $dogId ?>&toggle=<?= $task['id'] ?>" class="action-link">
-                                                <i class="fas fa-toggle-<?= $task['completed'] ? 'off' : 'on' ?>"></i>
-                                                <?= $task['completed'] ? 'Reopen' : 'Complete' ?>
-                                            </a>
-                                        </td>
+                                        <td><?= htmlspecialchars($log['note'] ?? '') ?></td>
+                                        <td><?= isset($log['created_at']) ? date('M j, g:i a', strtotime($log['created_at'])) : '' ?></td>
                                     </tr>
-                                    <?php if (!empty($task['description'])): ?>
-                                        <tr class="task-description-row">
-                                            <td colspan="4">
-                                                <div class="description-content">
-                                                    <strong>Description:</strong> <?= htmlspecialchars($task['description']) ?>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    <?php endif; ?>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
@@ -268,13 +212,13 @@ body {
     background-color: #f5f7fa;
 }
 
-.tasks-app {
+.care-app {
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
 }
 
-.tasks-header {
+.care-header {
     text-align: center;
     margin-bottom: 30px;
     padding: 20px 0;
@@ -285,7 +229,7 @@ body {
     margin: 0 auto;
 }
 
-.tasks-header h1 {
+.care-header h1 {
     font-size: 2.5rem;
     color: var(--primary-color);
     margin-bottom: 10px;
@@ -295,7 +239,7 @@ body {
     gap: 15px;
 }
 
-.tasks-header h2 {
+.care-header h2 {
     font-size: 1.5rem;
     color: var(--text-color);
     font-weight: 400;
@@ -305,7 +249,7 @@ body {
     gap: 10px;
 }
 
-.tasks-icon {
+.care-icon {
     color: var(--primary-color);
 }
 
@@ -365,7 +309,7 @@ body {
     gap: 12px;
 }
 
-.task-form {
+.care-form {
     padding: 25px;
 }
 
@@ -382,8 +326,6 @@ body {
     font-size: 1rem;
 }
 
-.form-group input[type="text"],
-.form-group input[type="datetime-local"],
 .form-group textarea {
     width: calc(100% - 28px);
     padding: 14px;
@@ -393,16 +335,8 @@ body {
     transition: var(--transition);
     margin: 0;
     box-sizing: border-box;
-}
-
-input[type="datetime-local"] {
-    height: 48px;
-}
-
-.form-group textarea {
-    min-height: 120px;
+    min-height: 150px;
     resize: vertical;
-    width: calc(100% - 28px);
 }
 
 .btn-submit {
@@ -446,7 +380,7 @@ input[type="datetime-local"] {
     color: var(--medium-gray);
 }
 
-.task-entries {
+.care-entries {
     padding: 20px;
 }
 
@@ -473,69 +407,28 @@ tr:hover {
     background-color: #f8f9fa;
 }
 
-.status-badge {
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
-}
-
-.status-badge.completed {
-    background-color: #d4edda;
-    color: #155724;
-}
-
-.status-badge.pending {
-    background-color: #fff3cd;
-    color: #856404;
-}
-
-.action-link {
-    color: var(--primary-color);
-    text-decoration: none;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: var(--transition);
-}
-
-.action-link:hover {
-    color: #0056b3;
-    text-decoration: underline;
-}
-
-.task-description-row {
-    background-color: #f8f9fa;
-}
-
-.description-content {
-    padding: 10px;
-    font-size: 0.9rem;
-    color: #555;
-}
-
 @media (max-width: 900px) {
     .content-grid {
         grid-template-columns: 1fr;
     }
     
-    .tasks-header h1 {
+    .care-header h1 {
         font-size: 2rem;
     }
     
-    .tasks-header h2 {
+    .care-header h2 {
         font-size: 1.3rem;
     }
 }
 
 @media (max-width: 600px) {
-    .tasks-header h1 {
+    .care-header h1 {
         font-size: 1.8rem;
         flex-direction: column;
         gap: 5px;
     }
     
-    .tasks-header h2 {
+    .care-header h2 {
         font-size: 1.1rem;
     }
     
@@ -544,18 +437,13 @@ tr:hover {
         padding: 15px 20px;
     }
     
-    .task-form {
+    .care-form {
         padding: 20px;
     }
     
     th, td {
         padding: 10px 12px;
         font-size: 0.9rem;
-    }
-    
-    .status-badge {
-        padding: 4px 8px;
-        font-size: 0.8rem;
     }
 }
 </style>

@@ -1,63 +1,139 @@
-#!/bin/bash
 
-echo "=== [DB SETUP] Starting MySQL installation and configuration ==="
-
-# Update package list
-sudo apt update
-
-# Install MySQL Server
-sudo apt install -y mysql-server
-
-# Secure installation (skip interactive mode)
-echo "=== [DB SETUP] Securing MySQL installation (skipping prompts) ==="
-sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'rootpassword'; FLUSH PRIVILEGES;"
-
-# Start and enable MySQL
-sudo systemctl enable mysql
-sudo systemctl start mysql
-
-# Create database and user
-echo "=== [DB SETUP] Creating BARKBUDDY DB and user ==="
-sudo mysql -u root -prootpassword <<EOF
-CREATE DATABASE IF NOT EXISTS BARKBUDDY;
-CREATE USER IF NOT EXISTS 'BARKBUDDYUSER'@'%' IDENTIFIED BY 'new_secure_password';
-GRANT ALL PRIVILEGES ON BARKBUDDY.* TO 'BARKBUDDYUSER'@'%';
-FLUSH PRIVILEGES;
-EOF
-
-# Create tables
-echo "=== [DB SETUP] Creating USERS table ==="
-sudo mysql -u root -prootpassword BARKBUDDY <<EOF
+-- Batch 1: USERS Table
 CREATE TABLE IF NOT EXISTS USERS (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(100) NOT NULL UNIQUE,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    role ENUM('owner', 'sitter', 'admin') DEFAULT 'owner'
+    id INT NOT NULL AUTO_INCREMENT,
+    username VARCHAR(64) NOT NULL,
+    email VARCHAR(128) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE (username),
+    UNIQUE (email)
+);
+
+-- Batch 2: Access Control & Profiles
+CREATE TABLE IF NOT EXISTS DOG_ACCESS (
+    id INT NOT NULL AUTO_INCREMENT,
+    dog_id INT NOT NULL,
+    user_id INT NOT NULL,
+    role ENUM('viewer', 'editor') DEFAULT 'viewer',
+    PRIMARY KEY (id),
+    KEY (dog_id),
+    KEY (user_id),
+    CONSTRAINT DOG_ACCESS_ibfk_1 FOREIGN KEY (dog_id) REFERENCES DOGS(id),
+    CONSTRAINT DOG_ACCESS_ibfk_2 FOREIGN KEY (user_id) REFERENCES USERS(id)
+);
+
+CREATE TABLE IF NOT EXISTS USER_PROFILES (
+    id INT NOT NULL AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    first_name VARCHAR(64),
+    last_name VARCHAR(64),
+    bio TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT USER_PROFILES_ibfk_1 FOREIGN KEY (user_id) REFERENCES USERS(id)
+);
+
+-- Batch 3: Behavior Logs, Care Logs, and DOGS Table
+CREATE TABLE IF NOT EXISTS BEHAVIOR_LOGS (
+    id INT NOT NULL AUTO_INCREMENT,
+    dog_id INT NOT NULL,
+    user_id INT NOT NULL,
+    behavior VARCHAR(255) NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY dog_id (dog_id),
+    KEY user_id (user_id),
+    CONSTRAINT BEHAVIOR_LOGS_ibfk_1 FOREIGN KEY (dog_id) REFERENCES DOGS (id),
+    CONSTRAINT BEHAVIOR_LOGS_ibfk_2 FOREIGN KEY (user_id) REFERENCES USERS (id)
+);
+
+CREATE TABLE IF NOT EXISTS CARE_LOGS (
+    id INT NOT NULL AUTO_INCREMENT,
+    dog_id INT NOT NULL,
+    user_id INT NOT NULL,
+    note TEXT,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY dog_id (dog_id),
+    KEY user_id (user_id),
+    CONSTRAINT CARE_LOGS_ibfk_1 FOREIGN KEY (dog_id) REFERENCES DOGS (id),
+    CONSTRAINT CARE_LOGS_ibfk_2 FOREIGN KEY (user_id) REFERENCES USERS (id)
 );
 
 CREATE TABLE IF NOT EXISTS DOGS (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    breed VARCHAR(100),
-    health_status VARCHAR(255),
+    id INT NOT NULL AUTO_INCREMENT,
+    owner_id INT NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    breed VARCHAR(64) NOT NULL,
+    age INT DEFAULT NULL,
     notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES USERS(id)
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    care_instructions TEXT,
+    image_url VARCHAR(255) DEFAULT NULL,
+    health_status VARCHAR(255) DEFAULT NULL,
+    daily_water_goal INT DEFAULT 1000,
+    PRIMARY KEY (id),
+    KEY owner_id (owner_id),
+    CONSTRAINT DOGS_ibfk_1 FOREIGN KEY (owner_id) REFERENCES USERS (id)
 );
 
-CREATE TABLE IF NOT EXISTS DOG_TASKS (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+-- Batch 4: Meals, Medications, Sitters
+CREATE TABLE IF NOT EXISTS MEAL_TRACKING (
+    id INT NOT NULL AUTO_INCREMENT,
     dog_id INT NOT NULL,
     user_id INT NOT NULL,
-    title VARCHAR(100) NOT NULL,
-    description TEXT,
-    due_date DATETIME,
+    food_type VARCHAR(100) NOT NULL,
+    amount_grams INT NOT NULL,
+    notes TEXT,
+    timestamp TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY (dog_id),
+    KEY (user_id),
+    CONSTRAINT MEAL_TRACKING_ibfk_1 FOREIGN KEY (dog_id) REFERENCES DOGS(id),
+    CONSTRAINT MEAL_TRACKING_ibfk_2 FOREIGN KEY (user_id) REFERENCES USERS(id)
+);
+
+CREATE TABLE IF NOT EXISTS MEDICATION_SCHEDULES (
+    id INT NOT NULL AUTO_INCREMENT,
+    dog_id INT NOT NULL,
+    user_id INT NOT NULL,
+    medication VARCHAR(100) NOT NULL,
+    dosage VARCHAR(100) DEFAULT NULL,
+    schedule_time DATETIME DEFAULT NULL,
+    notes TEXT,
     completed TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY (dog_id),
+    KEY (user_id),
+    CONSTRAINT MEDICATION_SCHEDULES_ibfk_1 FOREIGN KEY (dog_id) REFERENCES DOGS(id),
+    CONSTRAINT MEDICATION_SCHEDULES_ibfk_2 FOREIGN KEY (user_id) REFERENCES USERS(id)
+);
+
+CREATE TABLE IF NOT EXISTS SITTERS (
+    id INT NOT NULL AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    bio TEXT,
+    availability TEXT,
+    rating FLOAT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (dog_id) REFERENCES DOGS(id),
-    FOREIGN KEY (user_id) REFERENCES USERS(id)
+    PRIMARY KEY (id),
+    CONSTRAINT SITTERS_ibfk_1 FOREIGN KEY (user_id) REFERENCES USERS(id)
+);
+
+-- Batch 5: Logs
+CREATE TABLE IF NOT EXISTS LOGS (
+    id INT NOT NULL AUTO_INCREMENT,
+    user_id INT DEFAULT NULL,
+    log_type VARCHAR(50) DEFAULT NULL,
+    message TEXT,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY user_id (user_id),
+    CONSTRAINT logs_ibfk_1 FOREIGN KEY (user_id) REFERENCES USERS (id)
 );
 
 CREATE TABLE lost_dogs (
@@ -76,4 +152,6 @@ CREATE TABLE lost_dogs (
 );
 EOF
 
-echo "=== [DB SETUP] MySQL DB setup complete ==="
+INSERT INTO LOGS (id, user_id, log_type, message, created_at) VALUES
+(1, 1, 'INFO', 'USER KEN LOGGED IN', '2025-06-22 03:34:00'),
+(2, 1, 'ERROR', 'FAILED TO ACCESS SECURE FILE', '2025-06-22 03:29:34');

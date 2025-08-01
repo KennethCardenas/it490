@@ -1,8 +1,6 @@
 <?php
-
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-
 
 require_once __DIR__ . '/../auth.php';
 if (!function_exists('requireAuth')) {
@@ -17,14 +15,14 @@ if (!file_exists($mqClientPath)) {
 require_once $mqClientPath;
 require_once __DIR__ . '/../api/connect.php';
 
-function addWaterToDatabase($conn, $dogId, $userId, $amount, $notes) {
-    $stmt = $conn->prepare("INSERT INTO WATER_TRACKING (dog_id, user_id, amount_ml, notes) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("iiis", $dogId, $userId, $amount, $notes);
+function addBehaviorToDatabase($conn, $dogId, $userId, $behavior, $notes) {
+    $stmt = $conn->prepare("INSERT INTO BEHAVIOR_LOGS (dog_id, user_id, behavior, notes) VALUES (?, ?, ?, ?)");
+    $stmt->bind_param("iiss", $dogId, $userId, $behavior, $notes);
     return $stmt->execute();
 }
 
-function getWaterFromDatabase($conn, $dogId) {
-    $stmt = $conn->prepare("SELECT * FROM WATER_TRACKING WHERE dog_id = ? ORDER BY timestamp DESC");
+function getBehaviorsFromDatabase($conn, $dogId) {
+    $stmt = $conn->prepare("SELECT * FROM BEHAVIOR_LOGS WHERE dog_id = ? ORDER BY created_at DESC");
     $stmt->bind_param("i", $dogId);
     $stmt->execute();
     return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -37,49 +35,49 @@ if ($dogId <= 0) {
 }
 
 $user = $_SESSION['user'] ?? null;
-$waterResp = [];
-$waterEntries = [];
+$behaviorResp = [];
+$behaviorEntries = [];
 $msg = isset($_GET['msg']) ? trim($_GET['msg']) : '';
 $dog = null;
-$totalToday = 0;
-$dailyGoal = 1000; 
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        $amount = isset($_POST['amount']) ? (int)$_POST['amount'] : 0;
+        $behavior = isset($_POST['behavior']) ? trim($_POST['behavior']) : '';
         $notes = isset($_POST['notes']) ? trim($_POST['notes']) : '';
         
-        if ($amount <= 0) {
-            throw new Exception('Please enter a valid water amount');
+        if (empty($behavior)) {
+            throw new Exception('Please enter a behavior description');
         }
 
         $payload = [
-            'type' => 'add_water',
+            'type' => 'add_behavior',
             'dog_id' => $dogId,
             'user_id' => $user['id'] ?? 0,
-            'amount' => $amount,
+            'behavior' => $behavior,
             'notes' => $notes
         ];
 
-        $waterResp = @sendMessage($payload);
-        if (empty($waterResp) || ($waterResp['status'] ?? '') !== 'success') {
-            if (addWaterToDatabase($conn, $dogId, $user['id'] ?? 0, $amount, $notes)) {
-                $redirectMsg = urlencode('Water entry added successfully');
+        $behaviorResp = @sendMessage($payload);
+
+        if (empty($behaviorResp) || ($behaviorResp['status'] ?? '') !== 'success') {
+            if (addBehaviorToDatabase($conn, $dogId, $user['id'] ?? 0, $behavior, $notes)) {
+                $redirectMsg = urlencode('Behavior entry added successfully');
             } else {
-                throw new Exception('Failed to add water entry');
+                throw new Exception('Failed to add behavior');
             }
         } else {
-            $redirectMsg = urlencode($waterResp['message'] ?? 'Water entry added successfully');
+            $redirectMsg = urlencode($behaviorResp['message'] ?? 'Behavior entry added successfully');
         }
-        header("Location: water.php?dog_id={$dogId}&msg={$redirectMsg}");
+
+        header("Location: behavior.php?dog_id={$dogId}&msg={$redirectMsg}");
         exit();
     } catch (Exception $e) {
-        $waterResp['message'] = 'Error: ' . $e->getMessage();
+        $behaviorResp['message'] = 'Error: ' . $e->getMessage();
     }
 }
 
 if ($msg) {
-    $waterResp['message'] = urldecode($msg);
+    $behaviorResp['message'] = urldecode($msg);
 }
 
 try {
@@ -100,24 +98,17 @@ try {
 }
 
 try {
-    $resp = @sendMessage(['type' => 'get_water', 'dog_id' => $dogId]);
+    $resp = @sendMessage(['type' => 'get_behaviors', 'dog_id' => $dogId]);
     if (($resp['status'] ?? '') === 'success') {
-        $waterEntries = $resp['entries'] ?? [];
+        $behaviorEntries = $resp['behaviors'] ?? [];
     } else {
-        $waterEntries = getWaterFromDatabase($conn, $dogId);
+        $behaviorEntries = getBehaviorsFromDatabase($conn, $dogId);
     }
 } catch (Exception $e) {
-    $waterEntries = getWaterFromDatabase($conn, $dogId);
+    $behaviorEntries = getBehaviorsFromDatabase($conn, $dogId);
 }
 
-$today = date('Y-m-d');
-foreach ($waterEntries as $entry) {
-    if (isset($entry['timestamp']) && strpos($entry['timestamp'], $today) === 0) {
-        $totalToday += (int)($entry['amount_ml'] ?? 0);
-    }
-}
-
-$title = "Water Tracking" . ($dog ? " - " . htmlspecialchars($dog['name']) : "");
+$title = "Behavior Tracking" . ($dog ? " - " . htmlspecialchars($dog['name']) : "");
 
 $headerPath = __DIR__ . '/../header.php';
 if (file_exists($headerPath)) {
@@ -127,10 +118,10 @@ if (file_exists($headerPath)) {
 }
 ?>
 
-<div class="water-app">
-    <div class="water-header">
+<div class="behavior-app">
+    <div class="behavior-header">
         <div class="header-content">
-            <h1><i class="fas fa-tint water-icon"></i> Water Tracker</h1>
+            <h1><i class="fas fa-brain behavior-icon"></i> Behavior Tracker</h1>
             <?php if ($dog): ?>
                 <h2>For <?= htmlspecialchars($dog['name']) ?> <i class="fas fa-paw paw-icon"></i></h2>
             <?php endif; ?>
@@ -138,74 +129,65 @@ if (file_exists($headerPath)) {
     </div>
 
     <div class="main-container">
-        <?php if (!empty($waterResp['message'])): ?>
-            <div class="alert <?= strpos($waterResp['message'], 'Error') !== false ? 'alert-error' : 'alert-success' ?>">
-                <i class="fas <?= strpos($waterResp['message'], 'Error') !== false ? 'fa-exclamation-circle' : 'fa-check-circle' ?>"></i>
-                <?= htmlspecialchars($waterResp['message']) ?>
+        <?php if (!empty($behaviorResp['message'])): ?>
+            <div class="alert <?= strpos($behaviorResp['message'], 'Error') !== false ? 'alert-error' : 'alert-success' ?>">
+                <i class="fas <?= strpos($behaviorResp['message'], 'Error') !== false ? 'fa-exclamation-circle' : 'fa-check-circle' ?>"></i>
+                <?= htmlspecialchars($behaviorResp['message']) ?>
             </div>
         <?php endif; ?>
 
-        <div class="progress-section">
-            <div class="progress-card">
-                <h3><i class="fas fa-chart-line"></i> Today's Progress</h3>
-                <div class="progress-container">
-                    <div class="progress-bar" style="width: <?= min(($totalToday / $dailyGoal) * 100, 100) ?>%">
-                        <span class="progress-text"><?= $totalToday ?> ml / <?= $dailyGoal ?> ml</span>
-                    </div>
-                    <div class="paw-marks">
-                        <?php for ($i = 1; $i <= 5; $i++): ?>
-                            <i class="fas fa-paw <?= $totalToday >= ($i * 200) ? 'active' : '' ?>"></i>
-                        <?php endfor; ?>
-                    </div>
-                </div>
+        <div class="content-grid">
+        <div class="form-card">
+    <div class="card-header">
+        <i class="fas fa-plus-circle"></i> Add Behavior Entry
+    </div>
+    <form method="POST" class="behavior-form">
+        <div class="form-fields-container">
+            <div class="form-field-group">
+                <label for="behavior">
+                    <i class="fas fa-comment-alt"></i> Behavior Description
+                </label>
+                <input type="text" id="behavior" name="behavior" required placeholder="Describe the behavior">
+            </div>
+            <div class="form-field-group">
+                <label for="notes">
+                    <i class="fas fa-comment-dots"></i> Notes
+                </label>
+                <textarea id="notes" name="notes" placeholder="Any additional notes about this behavior"></textarea>
             </div>
         </div>
+        <button type="submit" class="btn-submit">
+            <i class="fas fa-save"></i> Record Behavior
+        </button>
+    </form>
+</div>
 
-        <div class="content-grid">
-            <div class="form-card">
-                <div class="card-header">
-                    <i class="fas fa-plus-circle"></i> Add Water Entry
-                </div>
-                <form method="POST" class="water-form">
-                    <div class="form-group">
-                        <label for="amount"><i class="fas fa-water"></i> Amount (ml)</label>
-                        <input type="number" id="amount" name="amount" min="1" required placeholder="Enter amount in ml">
-                    </div>
-                    <div class="form-group">
-                        <label for="notes"><i class="fas fa-comment-dots"></i> Notes</label>
-                        <textarea id="notes" name="notes" placeholder="Any notes about this entry"></textarea>
-                    </div>
-                    <button type="submit" class="btn-submit">
-                        <i class="fas fa-save"></i> Record Entry
-                    </button>
-                </form>
-            </div>
 
             <div class="history-card">
                 <div class="card-header">
-                    <i class="fas fa-history"></i> Water History
+                    <i class="fas fa-history"></i> Behavior History
                 </div>
-                <?php if (empty($waterEntries)): ?>
+                <?php if (empty($behaviorEntries)): ?>
                     <div class="empty-state">
-                        <i class="fas fa-tint-slash"></i>
-                        <p>No water entries recorded yet</p>
+                        <i class="fas fa-brain"></i>
+                        <p>No behavior entries recorded yet</p>
                     </div>
                 <?php else: ?>
-                    <div class="water-entries">
+                    <div class="behavior-entries">
                         <table>
                             <thead>
                                 <tr>
-                                    <th><i class="fas fa-water"></i> Amount</th>
-                                    <th><i class="fas fa-clock"></i> Time</th>
+                                    <th><i class="fas fa-comment-alt"></i> Behavior</th>
                                     <th><i class="fas fa-comment"></i> Notes</th>
+                                    <th><i class="fas fa-clock"></i> Time</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($waterEntries as $entry): ?>
+                                <?php foreach ($behaviorEntries as $entry): ?>
                                     <tr>
-                                        <td><?= htmlspecialchars($entry['amount_ml'] ?? '') ?> ml</td>
-                                        <td><?= isset($entry['timestamp']) ? date('M j, g:i a', strtotime($entry['timestamp'])) : '' ?></td>
+                                        <td><?= htmlspecialchars($entry['behavior'] ?? '') ?></td>
                                         <td><?= !empty($entry['notes']) ? htmlspecialchars($entry['notes']) : '<span class="no-notes">No notes</span>' ?></td>
+                                        <td><?= isset($entry['created_at']) ? date('M j, g:i a', strtotime($entry['created_at'])) : '' ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -245,13 +227,13 @@ body {
     background-color: #f5f7fa;
 }
 
-.water-app {
+.behavior-app {
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
 }
 
-.water-header {
+.behavior-header {
     text-align: center;
     margin-bottom: 30px;
     padding: 20px 0;
@@ -262,7 +244,7 @@ body {
     margin: 0 auto;
 }
 
-.water-header h1 {
+.behavior-header h1 {
     font-size: 2.5rem;
     color: var(--primary-color);
     margin-bottom: 10px;
@@ -272,7 +254,7 @@ body {
     gap: 15px;
 }
 
-.water-header h2 {
+.behavior-header h2 {
     font-size: 1.5rem;
     color: var(--text-color);
     font-weight: 400;
@@ -282,8 +264,8 @@ body {
     gap: 10px;
 }
 
-.water-icon {
-    color: var(--primary-color);
+.behavior-icon {
+    color: #8e44ad;
 }
 
 .paw-icon {
@@ -318,70 +300,6 @@ body {
     border-left: 4px solid var(--error-color);
 }
 
-.progress-section {
-    margin-bottom: 30px;
-}
-
-.progress-card {
-    background: var(--white);
-    border-radius: var(--border-radius);
-    padding: 25px;
-    box-shadow: var(--shadow);
-    max-width: 800px;
-    margin: 0 auto;
-}
-
-.progress-card h3 {
-    font-size: 1.3rem;
-    margin-bottom: 20px;
-    color: var(--text-color);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.progress-container {
-    margin-top: 20px;
-}
-
-.progress-bar {
-    height: 30px;
-    background: linear-gradient(90deg, var(--primary-color), #2980b9);
-    border-radius: 15px;
-    position: relative;
-    transition: var(--transition);
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.progress-text {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    color: var(--white);
-    font-weight: 600;
-    font-size: 0.9rem;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-.paw-marks {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 15px;
-    padding: 0 10px;
-}
-
-.paw-marks .fa-paw {
-    font-size: 22px;
-    color: var(--light-gray);
-    transition: var(--transition);
-}
-
-.paw-marks .fa-paw.active {
-    color: var(--secondary-color);
-    transform: scale(1.1);
-}
-
 .content-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -397,7 +315,7 @@ body {
 }
 
 .card-header {
-    background: linear-gradient(135deg, var(--primary-color), #2980b9);
+    background: linear-gradient(135deg, #8e44ad, #9b59b6);
     color: var(--white);
     padding: 18px 25px;
     font-size: 1.2rem;
@@ -406,42 +324,58 @@ body {
     gap: 12px;
 }
 
-.water-form {
+.behavior-form {
     padding: 25px;
 }
 
-.form-group {
-    margin-bottom: 25px;
+.form-fields-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
 }
 
-.form-group label {
+.form-field-group {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.form-field-group label {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 10px;
     font-weight: 600;
+    margin-bottom: 8px;
     color: var(--text-color);
     font-size: 1rem;
 }
 
-.form-group input[type="number"],
-.form-group textarea {
+.form-field-group label i {
+    min-width: 20px;
+    text-align: center;
+}
+
+.form-field-group input[type="text"],
+.form-field-group textarea {
     width: 100%;
-    padding: 14px;
+    padding: 12px 14px;
     border: 2px solid var(--light-gray);
     border-radius: 8px;
     font-size: 1rem;
     transition: var(--transition);
+    margin: 0;
+    box-sizing: border-box;
 }
 
-.form-group input[type="number"]:focus,
-.form-group textarea:focus {
+.form-field-group input[type="text"]:focus,
+.form-field-group textarea:focus {
     outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+    border-color: #8e44ad;
+    box-shadow: 0 0 0 3px rgba(142, 68, 173, 0.2);
 }
 
-.form-group textarea {
+.form-field-group textarea {
     min-height: 120px;
     resize: vertical;
 }
@@ -449,7 +383,7 @@ body {
 .btn-submit {
     width: 100%;
     padding: 14px;
-    background: linear-gradient(135deg, var(--success-color), #27ae60);
+    background: linear-gradient(135deg, #8e44ad, #9b59b6);
     color: var(--white);
     border: none;
     border-radius: 8px;
@@ -464,9 +398,9 @@ body {
 }
 
 .btn-submit:hover {
-    background: linear-gradient(135deg, #27ae60, #219653);
+    background: linear-gradient(135deg, #7d3c98, #8e44ad);
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(46, 204, 113, 0.3);
+    box-shadow: 0 4px 8px rgba(142, 68, 173, 0.3);
 }
 
 .empty-state {
@@ -487,7 +421,7 @@ body {
     color: var(--medium-gray);
 }
 
-.water-entries {
+.behavior-entries {
     padding: 20px;
 }
 
@@ -524,27 +458,23 @@ tr:hover {
         grid-template-columns: 1fr;
     }
     
-    .water-header h1 {
+    .behavior-header h1 {
         font-size: 2rem;
     }
     
-    .water-header h2 {
+    .behavior-header h2 {
         font-size: 1.3rem;
-    }
-    
-    .progress-card, .alert {
-        max-width: 100%;
     }
 }
 
 @media (max-width: 600px) {
-    .water-header h1 {
+    .behavior-header h1 {
         font-size: 1.8rem;
         flex-direction: column;
         gap: 5px;
     }
     
-    .water-header h2 {
+    .behavior-header h2 {
         font-size: 1.1rem;
     }
     
@@ -553,7 +483,7 @@ tr:hover {
         padding: 15px 20px;
     }
     
-    .water-form {
+    .behavior-form {
         padding: 20px;
     }
 }
@@ -567,4 +497,3 @@ if (file_exists($footerPath)) {
     echo '</body></html>';
 }
 ?>
-
