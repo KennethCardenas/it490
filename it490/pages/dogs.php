@@ -47,7 +47,7 @@ $stmt->close();
 ?>
 <?php
     $title = "My Dogs";
-    $pageCss = '/it490/styles/dogs.css';
+    $pageCss = '/../styles/dogs.css';
     include_once __DIR__ . '/../header.php';
 ?>
 <div class="dogs-container">

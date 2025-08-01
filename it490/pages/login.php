@@ -6,7 +6,7 @@ startSecureSession();
 
 // Default return URL if not set
 if (!isset($_SESSION['return_url'])) {
-    $_SESSION['return_url'] = $_GET['return'] ?? '/it490/pages/landing.php';
+    $_SESSION['return_url'] = $_GET['return'] ?? '/../pages/landing.php';
 }
 
 $error_message = '';
