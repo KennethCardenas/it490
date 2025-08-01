@@ -1,39 +1,35 @@
 <?php
-// Strict error reporting for development (remove in production)
+
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Include required files with proper error handling
+
 require_once __DIR__ . '/../auth.php';
 if (!function_exists('requireAuth')) {
     die('Authentication system not available');
 }
 requireAuth();
 
-// Include MQ client with error handling
 $mqClientPath = __DIR__ . '/../includes/mq_client.php';
 if (!file_exists($mqClientPath)) {
     die('MQ client system not available');
 }
 require_once $mqClientPath;
 
-// Get dog ID safely
 $dogId = isset($_GET['dog_id']) ? (int)$_GET['dog_id'] : 0;
 if ($dogId <= 0) {
     header("Location: dogs.php");
     exit();
 }
 
-// Initialize variables
 $user = $_SESSION['user'] ?? null;
 $waterResp = [];
 $waterEntries = [];
 $msg = isset($_GET['msg']) ? trim($_GET['msg']) : '';
 $dog = null;
 $totalToday = 0;
-$dailyGoal = 1000; // Default goal in ml
+$dailyGoal = 1000; 
 
-// Handle form submission safely
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $amount = isset($_POST['amount']) ? (int)$_POST['amount'] : 0;
@@ -60,27 +56,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Get message from redirect if present
 if ($msg) {
     $waterResp['message'] = urldecode($msg);
 }
 
-// Get dog details safely
 try {
     $dogResp = sendMessage(['type' => 'get_dog', 'dog_id' => $dogId]);
     if (($dogResp['status'] ?? '') === 'success') {
         $dog = $dogResp['dog'] ?? null;
     }
 } catch (Exception $e) {
-    // Continue without dog details if there's an error
 }
 
-// Get water entries safely
 try {
     $resp = sendMessage(['type' => 'get_water', 'dog_id' => $dogId]);
     if (($resp['status'] ?? '') === 'success') {
         $waterEntries = $resp['entries'] ?? [];
-        // Calculate today's total
         $today = date('Y-m-d');
         foreach ($waterEntries as $entry) {
             if (isset($entry['timestamp']) && strpos($entry['timestamp'], $today) === 0) {
@@ -89,13 +80,10 @@ try {
         }
     }
 } catch (Exception $e) {
-    // Continue without entries if there's an error
 }
 
-// Set page title safely
 $title = "Water Tracking" . ($dog ? " - " . htmlspecialchars($dog['name']) : "");
 
-// Include header safely
 $headerPath = __DIR__ . '/../header.php';
 if (file_exists($headerPath)) {
     include_once $headerPath;
@@ -537,7 +525,6 @@ tr:hover {
 </style>
 
 <?php
-// Include footer safely
 $footerPath = __DIR__ . '/../footer.php';
 if (file_exists($footerPath)) {
     include_once $footerPath;
