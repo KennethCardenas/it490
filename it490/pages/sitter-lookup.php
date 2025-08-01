@@ -35,7 +35,7 @@ $stmt->close();
         <ul>
             <?php foreach ($sitters as $sitter): ?>
                 <li>
-                    
+                    <p><?=$sitters?></p>
                 </li>
             <?php endforeach; ?>
         </ul>
