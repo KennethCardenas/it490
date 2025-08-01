@@ -53,6 +53,12 @@ function sendMessage(array $payload): array {
             }
             break;
 
+        case 'get_dog':
+            if (empty($payload['dog_id'])) {
+                throw new InvalidArgumentException('dog_id is required');
+            }
+            break;
+
         case 'add_task':
             foreach (['dog_id','user_id','title','due_date'] as $f) {
                 if (empty($payload[$f])) {
