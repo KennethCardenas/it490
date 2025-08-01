@@ -25,8 +25,8 @@ $stmt->close();
             <input name="name" placeholder="Name">
             <input name="email" placeholder="Email">
             <input name="phone" placeholder="Phone">
-            <input name="rating" type="number" step="0.1" min="0" max="5" placeholder="Rating">
             <input name="experience" type="number" placeholder="Years of Experience">
+            <input name="rating" type="number" step="0.1" min="0" max="5" placeholder="Rating">
             <br>
             <button type="submit">Search</button>
         </form>
@@ -37,7 +37,7 @@ $stmt->close();
                 <th>ID</th>
                 <th>USER ID</th>
                 <th>BIO</th>
-                <th>AVAILABILITY</th>
+                <th>Years of Experience</th>
                 <th>Rating</th>
             </tr>
 
@@ -46,7 +46,7 @@ $stmt->close();
                     <td><?= htmlspecialchars($sitter['id']) ?></td>
                     <td><?= htmlspecialchars($sitter['user_id']) ?></td>
                     <td><?= htmlspecialchars($sitter['bio']) ?></td>
-                    <td><?= htmlspecialchars($sitter['availability']) ?></td>
+                    <td><?= htmlspecialchars($sitter['experience_years']) ?></td>
                     <td><?= htmlspecialchars($sitter['rating']) ?></td>
                 </tr>
             <?php endforeach; ?>
