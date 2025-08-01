@@ -234,6 +234,18 @@ $callback = function ($msg) use ($channel, $conn) {
                             $dogs = $res->fetch_all(MYSQLI_ASSOC);
                             $response = ['status' => 'success', 'dogs' => $dogs];
                             break;
+
+                        case 'get_dog':
+                            $stmt = $conn->prepare("SELECT * FROM DOGS WHERE id = ?");
+                            $stmt->bind_param("i", $payload['dog_id']);
+                            $stmt->execute();
+                            $dog = $stmt->get_result()->fetch_assoc();
+                            if ($dog) {
+                                $response = ['status' => 'success', 'dog' => $dog];
+                            } else {
+                                $response['message'] = 'Dog not found';
+                            }
+                            break;
             
                         case 'add_task':
                             $stmt = $conn->prepare("INSERT INTO DOG_TASKS (dog_id, user_id, title, description, due_date) VALUES (?, ?, ?, ?, ?)");
