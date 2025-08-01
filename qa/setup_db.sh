@@ -59,6 +59,21 @@ CREATE TABLE IF NOT EXISTS DOG_TASKS (
     FOREIGN KEY (dog_id) REFERENCES DOGS(id),
     FOREIGN KEY (user_id) REFERENCES USERS(id)
 );
+
+CREATE TABLE lost_dogs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  dog_id INT NOT NULL,
+  dog_name VARCHAR(255) NOT NULL,
+  description TEXT,
+  last_lat DECIMAL(9,6),
+  last_lng DECIMAL(9,6),
+  alert_radius INT NOT NULL DEFAULT 10,
+  photo_url VARCHAR(512),
+  reported_by INT NOT NULL,
+  reported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  status ENUM('lost','found') DEFAULT 'lost',
+  FOREIGN KEY (reported_by) REFERENCES USERS(ID)
+);
 EOF
 
 echo "=== [DB SETUP] MySQL DB setup complete ==="
