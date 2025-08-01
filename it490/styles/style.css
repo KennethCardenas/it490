@@ -895,6 +895,3 @@ body {
   cursor: pointer;
 }
 }
-.badge-list{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:1rem;}
-.badge-item{display:flex;align-items:center;gap:0.5rem;background:#fff;padding:0.5rem;border:1px solid #ddd;border-radius:4px;}
-.badge-item img{display:block;}
