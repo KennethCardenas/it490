@@ -20,7 +20,7 @@ $bio = $_GET['bio'] ?? '';
 $experience = $_GET['experience'] ?? '';
 $rating = $_GET['rating'] ?? '';
 
-$sql = "SELECT * FROM sitters WHERE 1=1";
+$sql = "SELECT * FROM SITTERS WHERE 1=1";
 $params = [];
 $types = '';
 
