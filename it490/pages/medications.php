@@ -21,39 +21,62 @@ if ($dogId <= 0) {
 }
 
 $user = $_SESSION['user'] ?? null;
-$behaviorResp = [];
-$behaviorEntries = [];
+$medResp = [];
+$medEntries = [];
 $msg = isset($_GET['msg']) ? trim($_GET['msg']) : '';
 $dog = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        $behavior = isset($_POST['behavior']) ? trim($_POST['behavior']) : '';
+        $medication = isset($_POST['medication']) ? trim($_POST['medication']) : '';
+        $dosage = isset($_POST['dosage']) ? trim($_POST['dosage']) : '';
+        $scheduleTime = isset($_POST['schedule_time']) ? trim($_POST['schedule_time']) : '';
         $notes = isset($_POST['notes']) ? trim($_POST['notes']) : '';
         
-        if (empty($behavior)) {
-            throw new Exception('Please enter a behavior description');
+        if (empty($medication)) {
+            throw new Exception('Medication name is required');
+        }
+        if (empty($scheduleTime)) {
+            throw new Exception('Schedule time is required');
         }
 
         $payload = [
-            'type' => 'add_behavior',
+            'type' => 'schedule_medication',
             'dog_id' => $dogId,
             'user_id' => $user['id'] ?? 0,
-            'behavior' => $behavior,
+            'medication' => $medication,
+            'dosage' => $dosage,
+            'schedule_time' => $scheduleTime,
             'notes' => $notes
         ];
 
-        $behaviorResp = sendMessage($payload);
-        $redirectMsg = urlencode($behaviorResp['message'] ?? 'Behavior entry added successfully');
-        header("Location: behavior.php?dog_id={$dogId}&msg={$redirectMsg}");
+        $medResp = sendMessage($payload);
+        $redirectMsg = urlencode($medResp['message'] ?? 'Medication scheduled successfully');
+        header("Location: medications.php?dog_id={$dogId}&msg={$redirectMsg}");
         exit();
     } catch (Exception $e) {
-        $behaviorResp['message'] = 'Error: ' . $e->getMessage();
+        $medResp['message'] = 'Error: ' . $e->getMessage();
+    }
+}
+
+if (isset($_GET['complete'])) {
+    try {
+        $medId = (int)$_GET['complete'];
+        if ($medId > 0) {
+            $resp = sendMessage(['type' => 'complete_medication', 'med_id' => $medId]);
+            if (($resp['status'] ?? '') === 'success') {
+                $redirectMsg = urlencode('Medication marked as completed');
+                header("Location: medications.php?dog_id={$dogId}&msg={$redirectMsg}");
+                exit();
+            }
+        }
+    } catch (Exception $e) {
+        $medResp['message'] = 'Error completing medication: ' . $e->getMessage();
     }
 }
 
 if ($msg) {
-    $behaviorResp['message'] = urldecode($msg);
+    $medResp['message'] = urldecode($msg);
 }
 
 try {
@@ -65,14 +88,14 @@ try {
 }
 
 try {
-    $resp = sendMessage(['type' => 'get_behaviors', 'dog_id' => $dogId]);
+    $resp = sendMessage(['type' => 'get_medications', 'dog_id' => $dogId]);
     if (($resp['status'] ?? '') === 'success') {
-        $behaviorEntries = $resp['behaviors'] ?? [];
+        $medEntries = $resp['medications'] ?? [];
     }
 } catch (Exception $e) {
 }
 
-$title = "Behavior Tracking" . ($dog ? " - " . htmlspecialchars($dog['name']) : "");
+$title = "Medications" . ($dog ? " - " . htmlspecialchars($dog['name']) : "");
 
 $headerPath = __DIR__ . '/../header.php';
 if (file_exists($headerPath)) {
@@ -82,10 +105,10 @@ if (file_exists($headerPath)) {
 }
 ?>
 
-<div class="behavior-app">
-    <div class="behavior-header">
+<div class="medications-app">
+    <div class="medications-header">
         <div class="header-content">
-            <h1><i class="fas fa-brain behavior-icon"></i> Behavior Tracker</h1>
+            <h1><i class="fas fa-pills medication-icon"></i> Medication Tracker</h1>
             <?php if ($dog): ?>
                 <h2>For <?= htmlspecialchars($dog['name']) ?> <i class="fas fa-paw paw-icon"></i></h2>
             <?php endif; ?>
@@ -93,60 +116,80 @@ if (file_exists($headerPath)) {
     </div>
 
     <div class="main-container">
-        <?php if (!empty($behaviorResp['message'])): ?>
-            <div class="alert <?= strpos($behaviorResp['message'], 'Error') !== false ? 'alert-error' : 'alert-success' ?>">
-                <i class="fas <?= strpos($behaviorResp['message'], 'Error') !== false ? 'fa-exclamation-circle' : 'fa-check-circle' ?>"></i>
-                <?= htmlspecialchars($behaviorResp['message']) ?>
+        <?php if (!empty($medResp['message'])): ?>
+            <div class="alert <?= strpos($medResp['message'], 'Error') !== false ? 'alert-error' : 'alert-success' ?>">
+                <i class="fas <?= strpos($medResp['message'], 'Error') !== false ? 'fa-exclamation-circle' : 'fa-check-circle' ?>"></i>
+                <?= htmlspecialchars($medResp['message']) ?>
             </div>
         <?php endif; ?>
 
         <div class="content-grid">
             <div class="form-card">
                 <div class="card-header">
-                    <i class="fas fa-plus-circle"></i> Add Behavior Entry
+                    <i class="fas fa-plus-circle"></i> Schedule Medication
                 </div>
-                <form method="POST" class="behavior-form">
+                <form method="POST" class="medication-form">
                     <div class="form-group">
-                        <label for="behavior"><i class="fas fa-comment-alt"></i> Behavior Description</label>
-                        <input type="text" id="behavior" name="behavior" required placeholder="Describe the behavior">
+                        <label for="medication"><i class="fas fa-pills"></i> Medication Name</label>
+                        <input type="text" id="medication" name="medication" required placeholder="Enter medication name">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dosage"><i class="fas fa-prescription-bottle-alt"></i> Dosage</label>
+                        <input type="text" id="dosage" name="dosage" placeholder="Enter dosage (e.g., 5mg)">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="schedule_time"><i class="fas fa-clock"></i> Schedule Time</label>
+                        <input type="datetime-local" id="schedule_time" name="schedule_time" required>
                     </div>
                     
                     <div class="form-group">
                         <label for="notes"><i class="fas fa-comment-dots"></i> Notes</label>
-                        <textarea id="notes" name="notes" placeholder="Any additional notes about this behavior"></textarea>
+                        <textarea id="notes" name="notes" placeholder="Any special instructions"></textarea>
                     </div>
                     
                     <button type="submit" class="btn-submit">
-                        <i class="fas fa-save"></i> Record Behavior
+                        <i class="fas fa-save"></i> Schedule Medication
                     </button>
                 </form>
             </div>
 
             <div class="history-card">
                 <div class="card-header">
-                    <i class="fas fa-history"></i> Behavior History
+                    <i class="fas fa-history"></i> Medication Schedule
                 </div>
-                <?php if (empty($behaviorEntries)): ?>
+                <?php if (empty($medEntries)): ?>
                     <div class="empty-state">
-                        <i class="fas fa-brain"></i>
-                        <p>No behavior entries recorded yet</p>
+                        <i class="fas fa-prescription-bottle"></i>
+                        <p>No medications scheduled yet</p>
                     </div>
                 <?php else: ?>
-                    <div class="behavior-entries">
+                    <div class="medication-entries">
                         <table>
                             <thead>
                                 <tr>
-                                    <th><i class="fas fa-comment-alt"></i> Behavior</th>
-                                    <th><i class="fas fa-comment"></i> Notes</th>
+                                    <th><i class="fas fa-pills"></i> Medication</th>
+                                    <th><i class="fas fa-prescription-bottle-alt"></i> Dosage</th>
                                     <th><i class="fas fa-clock"></i> Time</th>
+                                    <th><i class="fas fa-check-circle"></i> Status</th>
+                                    <th><i class="fas fa-edit"></i> Action</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($behaviorEntries as $entry): ?>
+                                <?php foreach ($medEntries as $entry): ?>
                                     <tr>
-                                        <td><?= htmlspecialchars($entry['behavior'] ?? '') ?></td>
-                                        <td><?= !empty($entry['notes']) ? htmlspecialchars($entry['notes']) : '<span class="no-notes">No notes</span>' ?></td>
-                                        <td><?= isset($entry['created_at']) ? date('M j, g:i a', strtotime($entry['created_at'])) : '' ?></td>
+                                        <td><?= htmlspecialchars($entry['medication'] ?? '') ?></td>
+                                        <td><?= htmlspecialchars($entry['dosage'] ?? '') ?></td>
+                                        <td><?= isset($entry['schedule_time']) ? date('M j, g:i a', strtotime($entry['schedule_time'])) : '' ?></td>
+                                        <td><?= ($entry['completed'] ?? 0) ? '<span class="completed">Completed</span>' : '<span class="pending">Pending</span>' ?></td>
+                                        <td>
+                                            <?php if (!($entry['completed'] ?? 0)): ?>
+                                                <a href="?dog_id=<?= $dogId ?>&complete=<?= $entry['id'] ?>" class="complete-btn">
+                                                    <i class="fas fa-check"></i> Mark Complete
+                                                </a>
+                                            <?php endif; ?>
+                                        </td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -160,7 +203,7 @@ if (file_exists($headerPath)) {
 
 <style>
 :root {
-    --primary-color: #8e44ad;
+    --primary-color: #3498db;
     --secondary-color: #e74c3c;
     --success-color: #2ecc71;
     --error-color: #e74c3c;
@@ -186,13 +229,13 @@ body {
     background-color: #f5f7fa;
 }
 
-.behavior-app {
+.medications-app {
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
 }
 
-.behavior-header {
+.medications-header {
     text-align: center;
     margin-bottom: 30px;
     padding: 20px 0;
@@ -203,7 +246,7 @@ body {
     margin: 0 auto;
 }
 
-.behavior-header h1 {
+.medications-header h1 {
     font-size: 2.5rem;
     color: var(--primary-color);
     margin-bottom: 10px;
@@ -213,7 +256,7 @@ body {
     gap: 15px;
 }
 
-.behavior-header h2 {
+.medications-header h2 {
     font-size: 1.5rem;
     color: var(--text-color);
     font-weight: 400;
@@ -223,7 +266,7 @@ body {
     gap: 10px;
 }
 
-.behavior-icon {
+.medication-icon {
     color: var(--primary-color);
 }
 
@@ -274,7 +317,7 @@ body {
 }
 
 .card-header {
-    background: linear-gradient(135deg, var(--primary-color), #9b59b6);
+    background: linear-gradient(135deg, var(--primary-color), #2980b9);
     color: var(--white);
     padding: 18px 25px;
     font-size: 1.2rem;
@@ -283,7 +326,7 @@ body {
     gap: 12px;
 }
 
-.behavior-form {
+.medication-form {
     padding: 25px;
     display: flex;
     flex-direction: column;
@@ -302,15 +345,19 @@ body {
     font-weight: 600;
     color: var(--text-color);
     font-size: 1rem;
+    padding-left: 0;
+    margin-left: 0;
 }
 
-.form-group input[type="text"] {
+.form-group input[type="text"],
+.form-group input[type="datetime-local"] {
     width: 100%;
     padding: 12px;
     border: 2px solid var(--light-gray);
     border-radius: 8px;
     font-size: 1rem;
     transition: var(--transition);
+    margin-left: 0;
 }
 
 .form-group textarea {
@@ -322,19 +369,20 @@ body {
     min-height: 100px;
     resize: vertical;
     transition: var(--transition);
+    margin-left: 0;
 }
 
 .form-group input:focus,
 .form-group textarea:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(142, 68, 173, 0.2);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
 }
 
 .btn-submit {
     width: 100%;
     padding: 14px;
-    background: linear-gradient(135deg, var(--primary-color), #9b59b6);
+    background: linear-gradient(135deg, var(--success-color), #27ae60);
     color: var(--white);
     border: none;
     border-radius: 8px;
@@ -349,9 +397,9 @@ body {
 }
 
 .btn-submit:hover {
-    background: linear-gradient(135deg, #7d3c98, #8e44ad);
+    background: linear-gradient(135deg, #27ae60, #219653);
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(142, 68, 173, 0.3);
+    box-shadow: 0 4px 8px rgba(46, 204, 113, 0.3);
 }
 
 .empty-state {
@@ -372,7 +420,7 @@ body {
     color: var(--medium-gray);
 }
 
-.behavior-entries {
+.medication-entries {
     padding: 20px;
 }
 
@@ -399,9 +447,29 @@ tr:hover {
     background-color: #f8f9fa;
 }
 
-.no-notes {
-    color: var(--medium-gray);
-    font-style: italic;
+.completed {
+    color: var(--success-color);
+    font-weight: 500;
+}
+
+.pending {
+    color: var(--secondary-color);
+    font-weight: 500;
+}
+
+.complete-btn {
+    color: var(--success-color);
+    text-decoration: none;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: var(--transition);
+}
+
+.complete-btn:hover {
+    color: #219653;
+    text-decoration: underline;
 }
 
 @media (max-width: 900px) {
@@ -409,23 +477,23 @@ tr:hover {
         grid-template-columns: 1fr;
     }
     
-    .behavior-header h1 {
+    .medications-header h1 {
         font-size: 2rem;
     }
     
-    .behavior-header h2 {
+    .medications-header h2 {
         font-size: 1.3rem;
     }
 }
 
 @media (max-width: 600px) {
-    .behavior-header h1 {
+    .medications-header h1 {
         font-size: 1.8rem;
         flex-direction: column;
         gap: 5px;
     }
     
-    .behavior-header h2 {
+    .medications-header h2 {
         font-size: 1.1rem;
     }
     
@@ -434,7 +502,7 @@ tr:hover {
         padding: 15px 20px;
     }
     
-    .behavior-form {
+    .medication-form {
         padding: 20px;
     }
     
