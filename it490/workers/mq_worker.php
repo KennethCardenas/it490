@@ -75,6 +75,7 @@ $callback = function ($msg) use ($channel, $conn) {
         $payload['type'] = strtolower(trim($payload['type'] ?? ''));
         echo " [x] Processing: " . ($payload['type'] ?: 'unknown') . "\n";
 
+
         switch ($payload['type']) {
             case 'login':
                 $credential = validateEmailOrUsername($payload['username']);

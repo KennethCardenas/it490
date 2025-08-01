@@ -12,6 +12,7 @@ function sendMessage(array $payload): array {
 
     $payload['type'] = strtolower(trim($payload['type']));
 
+
     switch ($payload['type']) {
         case 'login':
             if (empty($payload['username']) || empty($payload['password'])) {
