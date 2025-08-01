@@ -10,6 +10,8 @@ function sendMessage(array $payload): array {
         throw new InvalidArgumentException('Payload must contain a type');
     }
 
+    $payload['type'] = trim($payload['type']);
+
     switch ($payload['type']) {
         case 'login':
             if (empty($payload['username']) || empty($payload['password'])) {
