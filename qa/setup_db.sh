@@ -136,6 +136,22 @@ CREATE TABLE IF NOT EXISTS LOGS (
     CONSTRAINT logs_ibfk_1 FOREIGN KEY (user_id) REFERENCES USERS (id)
 );
 
+CREATE TABLE lost_dogs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  dog_id INT NOT NULL,
+  dog_name VARCHAR(255) NOT NULL,
+  description TEXT,
+  last_lat DECIMAL(9,6),
+  last_lng DECIMAL(9,6),
+  alert_radius INT NOT NULL DEFAULT 10,
+  photo_url VARCHAR(512),
+  reported_by INT NOT NULL,
+  reported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  status ENUM('lost','found') DEFAULT 'lost',
+  FOREIGN KEY (reported_by) REFERENCES USERS(ID)
+);
+EOF
+
 INSERT INTO LOGS (id, user_id, log_type, message, created_at) VALUES
 (1, 1, 'INFO', 'USER KEN LOGGED IN', '2025-06-22 03:34:00'),
 (2, 1, 'ERROR', 'FAILED TO ACCESS SECURE FILE', '2025-06-22 03:29:34');
