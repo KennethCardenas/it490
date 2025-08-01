@@ -5,7 +5,15 @@ requireAuth();
 $user = $_SESSION['user'];
 require_once __DIR__ . '/../api/connect.php';
 
-$resp = sendMessage(['type' => 'get_sitters']);
+// fetch sitters
+$sitters = [];
+$stmt = $conn->prepare("SELECT * FROM SITTERS");
+
+if ($stmt->execute()) {
+    $res = $stmt->get_result();
+    $sitters = $res->fetch_all(MYSQLI_ASSOC);
+}
+$stmt->close();
 
 ?>
 <?php $title = "Tasks"; include_once __DIR__ . '/../header.php'; ?>
@@ -22,6 +30,15 @@ $resp = sendMessage(['type' => 'get_sitters']);
             <br>
             <button type="submit">Search</button>
         </form>
+    </div>
+    <div>
+        <ul>
+            <?php foreach ($sitters as $sitter): ?>
+                <li>
+                    
+                </li>
+            <?php endforeach; ?>
+        </ul>
     </div>
 </html>
 <?php include_once __DIR__ . '/../footer.php'; ?>
