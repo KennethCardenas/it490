@@ -72,7 +72,8 @@ $callback = function ($msg) use ($channel, $conn) {
     try {
         $payload = json_decode($msg->body, true);
         $response = ['status' => 'error', 'message' => 'Unknown action'];
-        $payload['type'] = trim($payload['type'] ?? '');
+        $payload['type'] = strtolower(trim($payload['type'] ?? ''));
+
         echo " [x] Processing: " . ($payload['type'] ?: 'unknown') . "\n";
 
         switch ($payload['type']) {

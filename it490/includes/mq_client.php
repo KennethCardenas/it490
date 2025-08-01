@@ -10,7 +10,8 @@ function sendMessage(array $payload): array {
         throw new InvalidArgumentException('Payload must contain a type');
     }
 
-    $payload['type'] = trim($payload['type']);
+    $payload['type'] = strtolower(trim($payload['type']));
+
 
     switch ($payload['type']) {
         case 'login':
