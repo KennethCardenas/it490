@@ -13,6 +13,20 @@ if (!file_exists($mqClientPath)) {
     die('MQ client system not available');
 }
 require_once $mqClientPath;
+require_once __DIR__ . '/../api/connect.php';
+
+function addBehaviorToDatabase($conn, $dogId, $userId, $behavior, $notes) {
+    $stmt = $conn->prepare("INSERT INTO BEHAVIOR_LOGS (dog_id, user_id, behavior, notes) VALUES (?, ?, ?, ?)");
+    $stmt->bind_param("iiss", $dogId, $userId, $behavior, $notes);
+    return $stmt->execute();
+}
+
+function getBehaviorsFromDatabase($conn, $dogId) {
+    $stmt = $conn->prepare("SELECT * FROM BEHAVIOR_LOGS WHERE dog_id = ? ORDER BY created_at DESC");
+    $stmt->bind_param("i", $dogId);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
 
 $dogId = isset($_GET['dog_id']) ? (int)$_GET['dog_id'] : 0;
 if ($dogId <= 0) {
@@ -43,8 +57,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'notes' => $notes
         ];
 
-        $behaviorResp = sendMessage($payload);
-        $redirectMsg = urlencode($behaviorResp['message'] ?? 'Behavior entry added successfully');
+        $behaviorResp = @sendMessage($payload);
+
+        if (empty($behaviorResp) || ($behaviorResp['status'] ?? '') !== 'success') {
+            if (addBehaviorToDatabase($conn, $dogId, $user['id'] ?? 0, $behavior, $notes)) {
+                $redirectMsg = urlencode('Behavior entry added successfully');
+            } else {
+                throw new Exception('Failed to add behavior');
+            }
+        } else {
+            $redirectMsg = urlencode($behaviorResp['message'] ?? 'Behavior entry added successfully');
+        }
+
         header("Location: behavior.php?dog_id={$dogId}&msg={$redirectMsg}");
         exit();
     } catch (Exception $e) {
@@ -57,19 +81,31 @@ if ($msg) {
 }
 
 try {
-    $dogResp = sendMessage(['type' => 'get_dog', 'dog_id' => $dogId]);
+    $dogResp = @sendMessage(['type' => 'get_dog', 'dog_id' => $dogId]);
     if (($dogResp['status'] ?? '') === 'success') {
         $dog = $dogResp['dog'] ?? null;
+    } else {
+        $stmt = $conn->prepare("SELECT * FROM DOGS WHERE id = ?");
+        $stmt->bind_param("i", $dogId);
+        $stmt->execute();
+        $dog = $stmt->get_result()->fetch_assoc();
     }
 } catch (Exception $e) {
+    $stmt = $conn->prepare("SELECT * FROM DOGS WHERE id = ?");
+    $stmt->bind_param("i", $dogId);
+    $stmt->execute();
+    $dog = $stmt->get_result()->fetch_assoc();
 }
 
 try {
-    $resp = sendMessage(['type' => 'get_behaviors', 'dog_id' => $dogId]);
+    $resp = @sendMessage(['type' => 'get_behaviors', 'dog_id' => $dogId]);
     if (($resp['status'] ?? '') === 'success') {
         $behaviorEntries = $resp['behaviors'] ?? [];
+    } else {
+        $behaviorEntries = getBehaviorsFromDatabase($conn, $dogId);
     }
 } catch (Exception $e) {
+    $behaviorEntries = getBehaviorsFromDatabase($conn, $dogId);
 }
 
 $title = "Behavior Tracking" . ($dog ? " - " . htmlspecialchars($dog['name']) : "");

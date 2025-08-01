@@ -13,6 +13,20 @@ if (!file_exists($mqClientPath)) {
     die('MQ client system not available');
 }
 require_once $mqClientPath;
+require_once __DIR__ . '/../api/connect.php';
+
+function addCareLogToDatabase($conn, $dogId, $userId, $note) {
+    $stmt = $conn->prepare("INSERT INTO CARE_LOGS (dog_id, user_id, note) VALUES (?, ?, ?)");
+    $stmt->bind_param("iis", $dogId, $userId, $note);
+    return $stmt->execute();
+}
+
+function getCareLogsFromDatabase($conn, $dogId) {
+    $stmt = $conn->prepare("SELECT * FROM CARE_LOGS WHERE dog_id = ? ORDER BY created_at DESC");
+    $stmt->bind_param("i", $dogId);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
 
 $dogId = isset($_GET['dog_id']) ? (int)$_GET['dog_id'] : 0;
 if ($dogId <= 0) {
@@ -41,8 +55,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'note' => $note
         ];
 
-        $careResp = sendMessage($payload);
-        $redirectMsg = urlencode($careResp['message'] ?? 'Care log added successfully');
+        $careResp = @sendMessage($payload);
+
+        if (empty($careResp) || ($careResp['status'] ?? '') !== 'success') {
+            if (addCareLogToDatabase($conn, $dogId, $user['id'] ?? 0, $note)) {
+                $redirectMsg = urlencode('Care log added successfully');
+            } else {
+                throw new Exception('Failed to add care log');
+            }
+        } else {
+            $redirectMsg = urlencode($careResp['message'] ?? 'Care log added successfully');
+        }
+
         header("Location: care.php?dog_id={$dogId}&msg={$redirectMsg}");
         exit();
     } catch (Exception $e) {
@@ -55,19 +79,31 @@ if ($msg) {
 }
 
 try {
-    $dogResp = sendMessage(['type' => 'get_dog', 'dog_id' => $dogId]);
+    $dogResp = @sendMessage(['type' => 'get_dog', 'dog_id' => $dogId]);
     if (($dogResp['status'] ?? '') === 'success') {
         $dog = $dogResp['dog'] ?? null;
+    } else {
+        $stmt = $conn->prepare("SELECT * FROM DOGS WHERE id = ?");
+        $stmt->bind_param("i", $dogId);
+        $stmt->execute();
+        $dog = $stmt->get_result()->fetch_assoc();
     }
 } catch (Exception $e) {
+    $stmt = $conn->prepare("SELECT * FROM DOGS WHERE id = ?");
+    $stmt->bind_param("i", $dogId);
+    $stmt->execute();
+    $dog = $stmt->get_result()->fetch_assoc();
 }
 
 try {
-    $resp = sendMessage(['type' => 'get_care_logs', 'dog_id' => $dogId]);
+    $resp = @sendMessage(['type' => 'get_care_logs', 'dog_id' => $dogId]);
     if (($resp['status'] ?? '') === 'success') {
         $logs = $resp['logs'] ?? [];
+    } else {
+        $logs = getCareLogsFromDatabase($conn, $dogId);
     }
 } catch (Exception $e) {
+    $logs = getCareLogsFromDatabase($conn, $dogId);
 }
 
 $title = "Care Logs" . ($dog ? " - " . htmlspecialchars($dog['name']) : "");

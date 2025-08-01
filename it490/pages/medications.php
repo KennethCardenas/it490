@@ -13,6 +13,26 @@ if (!file_exists($mqClientPath)) {
     die('MQ client system not available');
 }
 require_once $mqClientPath;
+require_once __DIR__ . '/../api/connect.php';
+
+function scheduleMedicationInDatabase($conn, $dogId, $userId, $medication, $dosage, $scheduleTime, $notes) {
+    $stmt = $conn->prepare("INSERT INTO MEDICATION_SCHEDULES (dog_id, user_id, medication, dosage, schedule_time, notes) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("iissss", $dogId, $userId, $medication, $dosage, $scheduleTime, $notes);
+    return $stmt->execute();
+}
+
+function completeMedicationInDatabase($conn, $medId) {
+    $stmt = $conn->prepare("UPDATE MEDICATION_SCHEDULES SET completed = 1 WHERE id = ?");
+    $stmt->bind_param("i", $medId);
+    return $stmt->execute();
+}
+
+function getMedicationsFromDatabase($conn, $dogId) {
+    $stmt = $conn->prepare("SELECT * FROM MEDICATION_SCHEDULES WHERE dog_id = ? ORDER BY schedule_time");
+    $stmt->bind_param("i", $dogId);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
 
 $dogId = isset($_GET['dog_id']) ? (int)$_GET['dog_id'] : 0;
 if ($dogId <= 0) {
@@ -46,8 +66,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'notes' => $notes
         ];
 
-        $medResp = sendMessage($payload);
-        $redirectMsg = urlencode($medResp['message'] ?? 'Medication scheduled');
+        $medResp = @sendMessage($payload);
+
+        if (empty($medResp) || ($medResp['status'] ?? '') !== 'success') {
+            if (scheduleMedicationInDatabase($conn, $dogId, $user['id'] ?? 0, $medication, $dosage, $scheduleTime, $notes)) {
+                $redirectMsg = urlencode('Medication scheduled');
+            } else {
+                throw new Exception('Failed to schedule medication');
+            }
+        } else {
+            $redirectMsg = urlencode($medResp['message'] ?? 'Medication scheduled');
+        }
+
         header("Location: medications.php?dog_id={$dogId}&msg={$redirectMsg}");
         exit();
     } catch (Exception $e) {
@@ -59,12 +89,13 @@ if (isset($_GET['complete'])) {
     try {
         $medId = (int)$_GET['complete'];
         if ($medId > 0) {
-            $resp = sendMessage(['type' => 'complete_medication', 'med_id' => $medId]);
-            if (($resp['status'] ?? '') === 'success') {
-                $redirectMsg = urlencode('Medication marked as completed');
-                header("Location: medications.php?dog_id={$dogId}&msg={$redirectMsg}");
-                exit();
+            $resp = @sendMessage(['type' => 'complete_medication', 'med_id' => $medId]);
+            if (empty($resp) || ($resp['status'] ?? '') !== 'success') {
+                completeMedicationInDatabase($conn, $medId);
             }
+            $redirectMsg = urlencode('Medication marked as completed');
+            header("Location: medications.php?dog_id={$dogId}&msg={$redirectMsg}");
+            exit();
         }
     } catch (Exception $e) {
         $medResp['message'] = 'Error completing medication: ' . $e->getMessage();
@@ -76,18 +107,32 @@ if ($msg) {
 }
 
 try {
-    $dogResp = sendMessage(['type' => 'get_dog', 'dog_id' => $dogId]);
+    $dogResp = @sendMessage(['type' => 'get_dog', 'dog_id' => $dogId]);
     if (($dogResp['status'] ?? '') === 'success') {
         $dog = $dogResp['dog'] ?? null;
+    } else {
+        $stmt = $conn->prepare("SELECT * FROM DOGS WHERE id = ?");
+        $stmt->bind_param("i", $dogId);
+        $stmt->execute();
+        $dog = $stmt->get_result()->fetch_assoc();
     }
-} catch (Exception $e) {}
+} catch (Exception $e) {
+    $stmt = $conn->prepare("SELECT * FROM DOGS WHERE id = ?");
+    $stmt->bind_param("i", $dogId);
+    $stmt->execute();
+    $dog = $stmt->get_result()->fetch_assoc();
+}
 
 try {
-    $resp = sendMessage(['type' => 'get_medications', 'dog_id' => $dogId]);
+    $resp = @sendMessage(['type' => 'get_medications', 'dog_id' => $dogId]);
     if (($resp['status'] ?? '') === 'success') {
         $medEntries = $resp['medications'] ?? [];
+    } else {
+        $medEntries = getMedicationsFromDatabase($conn, $dogId);
     }
-} catch (Exception $e) {}
+} catch (Exception $e) {
+    $medEntries = getMedicationsFromDatabase($conn, $dogId);
+}
 
 $title = "Medications" . ($dog ? " - " . htmlspecialchars($dog['name']) : "");
 $headerPath = __DIR__ . '/../header.php';
