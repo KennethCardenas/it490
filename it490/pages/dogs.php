@@ -60,6 +60,7 @@ $stmt->close();
             <li>
                 <strong><?= htmlspecialchars($d['name']) ?></strong> (<?= htmlspecialchars($d['breed']) ?>)
                 - <a href="tasks.php?dog_id=<?= $d['id'] ?>">Tasks</a>
+                - <a href="meal.php?dog_id=<?= $d['id'] ?>">Meals</a>
                 - <a href="water.php?dog_id=<?= $d['id'] ?>">Water</a>
                 - <a href="care.php?dog_id=<?= $d['id'] ?>">Care Logs</a>
                 - <a href="medications.php?dog_id=<?= $d['id'] ?>">Medications</a>

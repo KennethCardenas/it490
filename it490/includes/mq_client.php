@@ -162,6 +162,20 @@ function sendMessage(array $payload): array {
             }
             break;
 
+            case 'add_meal':
+                foreach (['dog_id','user_id','meal_type','amount'] as $f) {
+                    if (empty($payload[$f])) {
+                        throw new InvalidArgumentException("$f is required");
+                    }
+                }
+                break;
+            
+            case 'get_meals':
+                if (empty($payload['dog_id'])) {
+                    throw new InvalidArgumentException('dog_id is required');
+                }
+                break;
+
         default:
             throw new InvalidArgumentException("Unsupported message type: {$payload['type']}");
     }

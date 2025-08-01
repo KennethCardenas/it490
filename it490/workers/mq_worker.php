@@ -419,6 +419,29 @@ $callback = function ($msg) use ($channel, $conn) {
                     $response = ['status' => 'success', 'achievements' => $rows];
                     break;
 
+                    case 'add_meal':
+                        $stmt = $conn->prepare("INSERT INTO MEAL_TRACKING (dog_id, user_id, meal_type, amount, notes) VALUES (?, ?, ?, ?, ?)");
+                        $stmt->bind_param("iisss", $payload['dog_id'], $payload['user_id'], $payload['meal_type'], $payload['amount'], $payload['notes']);
+                        if ($stmt->execute()) {
+                            $response = ['status' => 'success', 'message' => 'Meal entry added'];
+                            // Award points for meal tracking
+                            $stmt = $conn->prepare("INSERT INTO USER_POINTS (user_id, points) VALUES (?, 5) ON DUPLICATE KEY UPDATE points = points + 5");
+                            $stmt->bind_param("i", $payload['user_id']);
+                            $stmt->execute();
+                            awardAchievement($conn, $payload['user_id'], 'first_meal_log');
+                        } else {
+                            $response = ['status' => 'error', 'message' => 'Failed to add meal entry'];
+                        }
+                        break;
+                    
+                    case 'get_meals':
+                        $stmt = $conn->prepare("SELECT * FROM MEAL_TRACKING WHERE dog_id = ? ORDER BY timestamp DESC");
+                        $stmt->bind_param("i", $payload['dog_id']);
+                        $stmt->execute();
+                        $meals = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                        $response = ['status' => 'success', 'entries' => $meals];
+                        break;
+
             default:
                 $response['message'] = "Unsupported action type";
                 $unknown = $payload['type'] ?? 'unknown';
