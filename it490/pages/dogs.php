@@ -1,6 +1,8 @@
 <?php
 include_once __DIR__ . '/../auth.php';
-requireAuth();
+
+// Only owners, sitters, and admins can manage dogs
+requireAnyRole(['owner', 'sitter', 'admin']);
 
 $user = $_SESSION['user'];
 // connect directly to the database

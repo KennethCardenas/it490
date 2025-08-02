@@ -13,9 +13,9 @@ body {
   border-radius: 8px;
 }
 input[type="text"], input[type="email"], input[type="password"] {
-  width: 10%;
+  width: 200px;
   padding: 10px;
-  margin-left: 44.5%;
+  margin: 10px auto;
   margin-bottom: 10px;
   display: block;
 }
@@ -113,18 +113,20 @@ button {
 
 #dog1 {
   position: absolute;
-  z-index: 9;
+  z-index: 1;
   left: 70%;
   top: 45%;
   height: 40%;
   width: 25%;
+  pointer-events: none;
 }
 
 #dog2 {
   position: absolute;
-  z-index: 9;
+  z-index: 1;
   top: 40%;
   left: 10%;
+  pointer-events: none;
 }
 /* Login.php END */
 
@@ -893,5 +895,40 @@ body {
   border: none;
   border-radius: 4px;
   cursor: pointer;
+}
+
+/* Role-based styling */
+.role-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+.role-owner {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.role-sitter {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.role-admin {
+  background: #ffebee;
+  color: #d32f2f;
+}
+
+.admin-only {
+  background: linear-gradient(45deg, #d32f2f, #f44336) !important;
+  color: white !important;
+}
+
+.user-role {
+  margin: 0.5rem 0;
+  font-weight: 500;
 }
 }

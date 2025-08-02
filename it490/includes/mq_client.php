@@ -85,13 +85,30 @@ function sendMessage(array $payload): array {
                 }
                 break;
                 
-            case 'add_water':
-                foreach (['dog_id','user_id','amount'] as $f) {
-                    if (empty($payload[$f])) {
-                        throw new InvalidArgumentException("$f is required");
-                    }
+                    case 'add_water':
+            foreach (['dog_id','user_id','amount'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
                 }
-                break;
+            }
+            break;
+            
+        case 'get_all_users':
+            if (empty($payload['admin_id'])) {
+                throw new InvalidArgumentException('admin_id is required');
+            }
+            break;
+            
+        case 'change_user_role':
+            foreach (['admin_id','user_id','new_role'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
+                }
+            }
+            if (!in_array($payload['new_role'], ['owner', 'sitter', 'admin'])) {
+                throw new InvalidArgumentException('Invalid role specified');
+            }
+            break;
 
         default:
             throw new InvalidArgumentException("Unsupported message type: {$payload['type']}");

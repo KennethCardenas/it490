@@ -23,6 +23,21 @@
                             <i class="fas fa-paw"></i>
                             <span>Dogs</span>
                         </a>
+                        
+                        <?php if (isAdmin()): ?>
+                            <a href="/it490/pages/admin.php" class="nav-link admin-only">
+                                <i class="fas fa-shield-alt"></i>
+                                <span>Admin Panel</span>
+                            </a>
+                        <?php endif; ?>
+                        
+                        <?php if (hasAnyRole(['admin', 'sitter'])): ?>
+                            <a href="/it490/pages/user-management.php" class="nav-link">
+                                <i class="fas fa-users"></i>
+                                <span>User Management</span>
+                            </a>
+                        <?php endif; ?>
+                        
                         <a href="/it490/pages/logout.php" class="nav-link">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Logout</span>

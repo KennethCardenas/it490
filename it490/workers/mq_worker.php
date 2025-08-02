@@ -63,7 +63,7 @@ $callback = function ($msg) use ($channel, $conn) {
         switch ($payload['type'] ?? '') {
             case 'login':
                 $credential = validateEmailOrUsername($payload['username']);
-                $query = "SELECT id, username, email, password FROM USERS WHERE {$credential['field']} = ?";
+                $query = "SELECT id, username, email, password, role FROM USERS WHERE {$credential['field']} = ?";
                 $stmt = $conn->prepare($query);
                 $stmt->bind_param("s", $credential['value']);
                 $stmt->execute();
@@ -77,10 +77,11 @@ $callback = function ($msg) use ($channel, $conn) {
                             'user' => [
                                 'id' => $user['id'],
                                 'username' => $user['username'],
-                                'email' => $user['email']
+                                'email' => $user['email'],
+                                'role' => $user['role']
                             ]
                         ];
-                        echo " [+] Login success for user: {$user['username']}\\n";
+                        echo " [+] Login success for user: {$user['username']} (role: {$user['role']})\\n";
                     } else {
                         $response['message'] = "Invalid credentials";
                         echo " [-] Login failed (bad password)\\n";
@@ -111,10 +112,11 @@ $callback = function ($msg) use ($channel, $conn) {
                         'user' => [
                             'id' => $stmt->insert_id,
                             'username' => $payload['username'],
-                            'email' => $payload['email']
+                            'email' => $payload['email'],
+                            'role' => 'owner'  // Default role
                         ]
                     ];
-                    echo " [+] Registered user: {$payload['username']}\\n";
+                    echo " [+] Registered user: {$payload['username']} (role: owner)\\n";
                 } else {
                     $response['message'] = "Database error: " . $conn->error;
                     echo " [-] Registration failed: " . $response['message'] . "\\n";
@@ -276,6 +278,77 @@ $callback = function ($msg) use ($channel, $conn) {
                     $waterEntries = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                     $response = ['status' => 'success', 'entries' => $waterEntries];
                     break;
+                    
+            case 'get_all_users':
+                // Verify admin privileges
+                $adminQuery = "SELECT role FROM USERS WHERE id = ?";
+                $adminStmt = $conn->prepare($adminQuery);
+                $adminStmt->bind_param("i", $payload['admin_id']);
+                $adminStmt->execute();
+                $adminResult = $adminStmt->get_result();
+                
+                if ($adminResult->num_rows === 1) {
+                    $admin = $adminResult->fetch_assoc();
+                    if ($admin['role'] === 'admin') {
+                        $usersQuery = "SELECT id, username, email, role FROM USERS ORDER BY username";
+                        $usersStmt = $conn->prepare($usersQuery);
+                        $usersStmt->execute();
+                        $usersResult = $usersStmt->get_result();
+                        
+                        $users = [];
+                        while ($user = $usersResult->fetch_assoc()) {
+                            $users[] = $user;
+                        }
+                        
+                        $response = [
+                            'status' => 'success',
+                            'users' => $users
+                        ];
+                        echo " [+] Admin fetched " . count($users) . " users\n";
+                    } else {
+                        $response['message'] = "Access denied - admin privileges required";
+                        echo " [-] Non-admin tried to access user list\n";
+                    }
+                } else {
+                    $response['message'] = "Invalid admin ID";
+                    echo " [-] Invalid admin ID provided\n";
+                }
+                break;
+                
+            case 'change_user_role':
+                // Verify admin privileges
+                $adminQuery = "SELECT role FROM USERS WHERE id = ?";
+                $adminStmt = $conn->prepare($adminQuery);
+                $adminStmt->bind_param("i", $payload['admin_id']);
+                $adminStmt->execute();
+                $adminResult = $adminStmt->get_result();
+                
+                if ($adminResult->num_rows === 1) {
+                    $admin = $adminResult->fetch_assoc();
+                    if ($admin['role'] === 'admin') {
+                        $updateQuery = "UPDATE USERS SET role = ? WHERE id = ?";
+                        $updateStmt = $conn->prepare($updateQuery);
+                        $updateStmt->bind_param("si", $payload['new_role'], $payload['user_id']);
+                        
+                        if ($updateStmt->execute()) {
+                            $response = [
+                                'status' => 'success',
+                                'message' => 'User role updated successfully'
+                            ];
+                            echo " [+] Admin updated user {$payload['user_id']} role to {$payload['new_role']}\n";
+                        } else {
+                            $response['message'] = "Database error: " . $conn->error;
+                            echo " [-] Database error updating role\n";
+                        }
+                    } else {
+                        $response['message'] = "Access denied - admin privileges required";
+                        echo " [-] Non-admin tried to change user role\n";
+                    }
+                } else {
+                    $response['message'] = "Invalid admin ID";
+                    echo " [-] Invalid admin ID provided\n";
+                }
+                break;
 
             default:
                 $response['message'] = "Unsupported action type";
