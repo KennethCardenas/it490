@@ -32,6 +32,22 @@ function isAuthenticated(): bool {
     return isset($_SESSION['user']) && !empty($_SESSION['user']['id']);
 }
 
+// Require authentication and redirect to login if not authenticated
+function requireAuth(): void {
+    startSecureSession();
+
+    if (!isAuthenticated()) {
+        $returnUrl = $_SERVER['REQUEST_URI'] ?? '/pages/landing.php';
+
+        if (!str_contains($returnUrl, 'login.php')) {
+            $_SESSION['return_url'] = $returnUrl;
+        }
+
+        header("Location: /pages/login.php");
+        exit();
+    }
+}
+
 // Get current user's role
 function getUserRole(): ?string {
     startSecureSession();
@@ -102,22 +118,6 @@ function isOwner(): bool {
 // Check if user is sitter
 function isSitter(): bool {
     return hasRole('sitter');
-}
-
-// Require authentication and redirect to login if not authenticated
-function requireAuth(): void {
-    startSecureSession();
-
-    if (!isAuthenticated()) {
-        $returnUrl = $_SERVER['REQUEST_URI'] ?? '/pages/landing.php';
-
-        if (!str_contains($returnUrl, 'login.php')) {
-            $_SESSION['return_url'] = $returnUrl;
-        }
-
-        header("Location: /pages/login.php");
-        exit();
-    }
 }
 
 // Get and clear the return URL from session or fallback to landing page
