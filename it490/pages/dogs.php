@@ -49,6 +49,7 @@ if ($stmt->execute()) {
     foreach ($dogs as &$dog) {
         $breedImage = DogAPI::getBreedImage($dog['breed']);
         $dog['breed_image'] = $breedImage ? $breedImage['image_url'] : null;
+        $dog['breed_info'] = $breedImage ? $breedImage['breed_info'] : null;
     }
 }
 $stmt->close();
@@ -97,6 +98,15 @@ include_once __DIR__ . '/../header.php';
                         <p class="breed"><?= !empty($d['breed']) ? htmlspecialchars($d['breed']) : 'No breed specified' ?></p>
                         <?php if (!empty($d['health_status'])): ?>
                             <p class="health-status"><i class="fas fa-heartbeat"></i> <?= htmlspecialchars($d['health_status']) ?></p>
+                        <?php endif; ?>
+                        <?php if (!empty($d['breed_image']) && !empty($d['breed_info'])): ?>
+                            <?php $breedInfo = $d['breed_info']; ?>
+                            <?php if (!empty($breedInfo['temperament'])): ?>
+                                <div class="breed-temperament">
+                                    <p class="temperament-label"><i class="fas fa-brain"></i> Expected Behavior:</p>
+                                    <p class="temperament-text"><?= htmlspecialchars($breedInfo['temperament']) ?></p>
+                                </div>
+                            <?php endif; ?>
                         <?php endif; ?>
                     </div>
                     <div class="dog-actions">
@@ -366,6 +376,28 @@ function handleImageError(img) {
 .health-status {
     color: #e74c3c;
     font-size: 0.9rem;
+}
+
+.breed-temperament {
+    margin-top: 12px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    border-left: 3px solid #3498db;
+}
+
+.temperament-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 5px;
+}
+
+.temperament-text {
+    font-size: 0.8rem;
+    color: #5a6c7d;
+    line-height: 1.4;
+    margin: 0;
 }
 
 .dog-actions {
