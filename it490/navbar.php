@@ -23,6 +23,18 @@
                             <i class="fas fa-paw"></i>
                             <span>Dogs</span>
                         </a>
+			<a href="/it490/pages/invite.php" class="nav-link">
+          		   <i class="fas fa-envelope-open-text"></i><span>Invites</span>
+        		</a>
+        		<a href="/it490/pages/playdates.php" class="nav-link">
+          		   <i class="fas fa-calendar-alt"></i><span>Playdates</span>
+        		</a>
+			<a href="/it490/pages/playdate_request.php" class="nav-link">
+			   <i class= "fas fa-paper-plane"></i><span>Playdate Requests</span>
+			</a>
+        		<a href="/it490/pages/lost_dogs.php" class="nav-link">
+          		    <i class="fas fa-dog"></i><span>Lost Dogs</span>
+       		 	</a>
                         <a href="/it490/pages/logout.php" class="nav-link">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Logout</span>

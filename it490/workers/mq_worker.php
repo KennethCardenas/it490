@@ -276,6 +276,112 @@ $callback = function ($msg) use ($channel, $conn) {
                     $waterEntries = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                     $response = ['status' => 'success', 'entries' => $waterEntries];
                     break;
+		
+		case 'lost_dogs_create':
+        	    $stmt = $conn->prepare(
+            	    "INSERT INTO lost_dogs
+               	       (dog_id,dog_name,description,last_lat,last_lng,alert_radius,photo_url,reported_by)
+             	    VALUES(?,?,?,?,?,?,?,?)"
+        	    );
+        	    $stmt->bind_param(
+            	   	'issddisi',
+            	    	$payload['dog_id'],
+            	    	$payload['dog_name'],
+            	    	$payload['description'],
+            	    	$payload['last_lat'],
+            	    	$payload['last_lng'],
+            	    	$payload['alert_radius'],
+             	    	$payload['photo_url'],
+            	    	$payload['user_id']
+        	    );
+        	    if ($stmt->execute()){
+        	        $response = ['status'=>'success','message'=>'Lost dog reported'];
+			echo "Lost dog post added for {$payload['dog_id']}\n";
+		    } else {
+			$response['message'] = 'Failed to post lost dog report: ' . $conn->error;
+			echo "Report failed to post\n";
+		    }
+        	    break;
+
+    		case 'lost_dogs_list':
+        	    $res = $conn->query("SELECT * FROM lost_dogs ORDER BY reported_at DESC");
+        	    $response = ['status'=>'success','alerts'=>$res->fetch_all(MYSQLI_ASSOC)];
+        	    break;
+
+    		case 'lost_dogs_update':
+        	    $stmt = $conn->prepare(
+            		"UPDATE lost_dogs SET status = ? WHERE id = ?"
+        	    );
+        	    $stmt->bind_param('si',$payload['status'],$payload['id']);
+        	    if ($stmt->execute()){
+        	        $response = ['status'=>'success','message'=>'Alert updated'];
+			echo "Alert updated for {$payload['id'] to {$payload['status']}\n";
+		    } else {
+			$response['message'] = 'Status not updated: ' . $conn->error;
+			echo "Lost status not updated\n";
+        	    break;
+
+		case 'playdates_list':
+    		   $allowed = ['age_range','size','energy_level','temperament','play_style','gender_pref','location'];
+    		   $clauses = $params = [];
+    		   $types = '';
+
+    		   foreach ($allowed as $f) {
+        		if (!empty($payload[$f])) {
+            		    if ($f === 'location') {
+                		$clauses[] = "LOWER(location) LIKE ?";
+                		$params[]  = '%' .strtolower($payload[$f]) . '%';
+            		    } else {
+                		$clauses[] = "$f = ?";
+                		$params[]  = $payload[$f];
+            		    }
+            		    $types .= 's';
+        		}
+    		   }
+
+    		   $sql = "SELECT id,title,description,scheduled_at,location,created_by,created_at FROM playdates";
+    		   if ($clauses) {
+        	       $sql .= ' WHERE ' . implode(' AND ', $clauses);
+    		   }
+    		   $sql .= ' ORDER BY scheduled_at DESC';
+
+    		   $stmt = $conn->prepare($sql);
+    		   if ($clauses) {
+        	   $stmt->bind_param($types, ...$params);
+    		   }
+    		   if ($stmt->execute()){
+    		       $response = ['status'=>'success', 'playdates'=>$stmt->get_result()->fetch_all(MYSQLI_ASSOC)];
+		       echo "Playdate list displayed\n";
+		   } else {
+		       $response['message'] = 'List did not fetch: ' . $conn->error;
+		       echo "Playdates were not filtered\n";
+    		   break;
+
+		case 'playdates_create':
+    		    foreach (['user_id','title','description','scheduled_at','location','age_range','size','energy_level','temperament','play_style','gender_pref'] as $f) {
+        		if (!isset($data[$f]) || $data[$f] === '') {
+            		    $response = ['status' => 'error', 'message' => "$f is required"];
+            		    break;
+        		}
+    		    }
+    		    if (!isset($response)) {
+        		$stmt = $pdo->prepare("INSERT INTO playdates (created_by, title, description, scheduled_at, location, age_range, size, energy_level, temperament, play_style, gender_pref) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        		$stmt->execute([
+            		    $data['user_id'],
+            		    $data['title'],
+            		    $data['description'],
+            		    $data['scheduled_at'],
+            		    $data['location'],
+            		    $data['age_range'],
+            		    $data['size'],
+            		    $data['energy_level'],
+            		    $data['temperament'],
+            		    $data['play_style'],
+            		    $data['gender_pref']
+        		]);
+        		$response = ['status' => 'success', 'message' => 'Playdate created'];
+    		    }
+    		    break;
 
             default:
                 $response['message'] = "Unsupported action type";
