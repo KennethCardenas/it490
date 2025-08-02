@@ -1,6 +1,8 @@
 <?php
 include_once __DIR__ . '/../auth.php';
-requireAuth();
+
+// Only owners, sitters, and admins can manage dogs
+requireAnyRole(['owner', 'sitter', 'admin']);
 
 $user = $_SESSION['user'];
 // connect directly to the database
@@ -8,9 +10,9 @@ require_once __DIR__ . '/../api/connect.php';
 // include Dog API helper
 require_once __DIR__ . '/../api/dog_api.php';
 
-// Handle add dog
-$addMessage = '';
+// handle add dog
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // owner_id column stores the user that owns the dog
     $stmt = $conn->prepare(
         "INSERT INTO DOGS (owner_id, name, breed, health_status, notes) VALUES (?, ?, ?, ?, ?)"
     );
@@ -29,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $notes = trim($_POST['notes']);
 
     if ($stmt->execute()) {
-        $addMessage = 'Dog added successfully!';
+        $addMessage = 'Dog added';
     } else {
         $addMessage = 'Failed to create dog: ' . $conn->error;
     }
@@ -62,20 +64,21 @@ $pageCss = '/it490/styles/dogs.css';
 include_once __DIR__ . '/../header.php';
 ?>
 
-<div class="dogs-app">
-    <div class="dogs-header">
-        <div class="header-content">
-            <h1><i class="fas fa-paw"></i> My Dogs</h1>
-            <p>Manage your dog profiles and access their care features</p>
-        </div>
-    </div>
-
+<div class="dogs-container">
+    <h2>Your Dogs</h2>
     <?php if (!empty($addMessage)): ?>
-        <div class="alert <?= strpos($addMessage, 'Failed') !== false ? 'alert-error' : 'alert-success' ?>">
-            <i class="fas <?= strpos($addMessage, 'Failed') !== false ? 'fa-exclamation-circle' : 'fa-check-circle' ?>"></i>
-            <?= htmlspecialchars($addMessage) ?>
-        </div>
+        <p><?= htmlspecialchars($addMessage) ?></p>
     <?php endif; ?>
+    <ul>
+        <?php foreach ($dogs as $d): ?>
+            <li>
+                <strong><?= htmlspecialchars($d['name']) ?></strong> (<?= htmlspecialchars($d['breed']) ?>)
+                - <a href="tasks.php?dog_id=<?= $d['id'] ?>">Tasks</a>
+                - <a href="water.php?dog_id=<?= $d['id'] ?>">Water</a>
+            </li>
+        <?php endforeach; ?>
+    </ul>
+
 
     <div class="main-container">
         <div class="dogs-grid">
@@ -522,6 +525,7 @@ function handleImageError(img) {
 }
 
 </style>
+
 
 <?php $conn->close(); ?>
 <?php include_once __DIR__ . '/../footer.php'; ?>
