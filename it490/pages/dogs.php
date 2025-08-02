@@ -3,7 +3,10 @@ include_once __DIR__ . '/../auth.php';
 requireAuth();
 
 $user = $_SESSION['user'];
+// connect directly to the database
 require_once __DIR__ . '/../api/connect.php';
+// include Dog API helper
+require_once __DIR__ . '/../api/dog_api.php';
 
 // Handle add dog
 $addMessage = '';
@@ -33,15 +36,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->close();
 }
 
-// Fetch dogs
+// fetch dogs
 $dogs = [];
 $stmt = $conn->prepare("SELECT * FROM DOGS WHERE owner_id = ?");
+
 $stmt->bind_param("i", $user['id']);
 if ($stmt->execute()) {
     $res = $stmt->get_result();
     $dogs = $res->fetch_all(MYSQLI_ASSOC);
+    
+    // Fetch breed images for each dog
+    foreach ($dogs as &$dog) {
+        $breedImage = DogAPI::getBreedImage($dog['breed']);
+        $dog['breed_image'] = $breedImage ? $breedImage['image_url'] : null;
+    }
 }
 $stmt->close();
+
+// Get available breeds for the form
+$availableBreeds = DogAPI::getBreedNames();
 
 $title = "My Dogs";
 $pageCss = '/it490/styles/dogs.css';
@@ -67,9 +80,18 @@ include_once __DIR__ . '/../header.php';
         <div class="dogs-grid">
             <?php foreach ($dogs as $d): ?>
                 <div class="dog-card">
-                    <div class="dog-avatar">
-                        <i class="fas fa-dog"></i>
-                    </div>
+                    <?php if (!empty($d['breed_image'])): ?>
+                        <div class="dog-image">
+                            <img src="<?= htmlspecialchars($d['breed_image']) ?>" 
+                                 alt="<?= htmlspecialchars($d['breed']) ?> image" 
+                                 loading="lazy"
+                                 onerror="handleImageError(this);">
+                        </div>
+                    <?php else: ?>
+                        <div class="dog-avatar">
+                            <i class="fas fa-dog"></i>
+                        </div>
+                    <?php endif; ?>
                     <div class="dog-info">
                         <h3><?= htmlspecialchars($d['name']) ?></h3>
                         <p class="breed"><?= !empty($d['breed']) ? htmlspecialchars($d['breed']) : 'No breed specified' ?></p>
@@ -114,7 +136,13 @@ include_once __DIR__ . '/../header.php';
                 </div>
                 <div class="form-group">
                     <label for="breed"><i class="fas fa-dna"></i> Breed</label>
-                    <input type="text" id="breed" name="breed" placeholder="Dog's breed">
+                    <input type="text" id="breed" name="breed" placeholder="Start typing breed name..." list="breed-suggestions">
+                    <datalist id="breed-suggestions">
+                        <?php foreach ($availableBreeds as $breed): ?>
+                            <option value="<?= htmlspecialchars($breed) ?>">
+                        <?php endforeach; ?>
+                    </datalist>
+                    <small class="form-help">Start typing to see breed suggestions from The Dog API</small>
                 </div>
                 <div class="form-group">
                     <label for="health_status"><i class="fas fa-heartbeat"></i> Health Status</label>
@@ -131,6 +159,88 @@ include_once __DIR__ . '/../header.php';
         </div>
     </div>
 </div>
+
+<script>
+// Enhanced breed input with live filtering
+document.addEventListener('DOMContentLoaded', function() {
+    const breedInput = document.getElementById('breed');
+    const breedDatalist = document.getElementById('breed-suggestions');
+    
+    if (breedInput && breedDatalist) {
+        // Store original options
+        const allOptions = Array.from(breedDatalist.querySelectorAll('option')).map(option => option.value);
+        
+        breedInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase();
+            
+            // Clear current options
+            breedDatalist.innerHTML = '';
+            
+            // Filter and add matching options
+            const filteredOptions = allOptions.filter(breed => 
+                breed.toLowerCase().includes(query)
+            ).slice(0, 10); // Limit to 10 results for performance
+            
+            filteredOptions.forEach(breed => {
+                const option = document.createElement('option');
+                option.value = breed;
+                breedDatalist.appendChild(option);
+            });
+        });
+        
+        // Capitalize first letter when user selects or leaves field
+        breedInput.addEventListener('blur', function() {
+            if (this.value) {
+                this.value = this.value.charAt(0).toUpperCase() + this.value.slice(1).toLowerCase();
+            }
+        });
+    }
+    
+    // Add loading state to form submission
+    const form = document.querySelector('.dog-form');
+    const submitBtn = document.querySelector('.btn-submit');
+    
+    if (form && submitBtn) {
+        form.addEventListener('submit', function() {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding Dog...';
+            submitBtn.style.opacity = '0.7';
+        });
+    }
+    
+    // Add fade-in animation to dog cards
+    const dogCards = document.querySelectorAll('.dog-card');
+    dogCards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+
+// Add error handling for images
+function handleImageError(img) {
+    img.style.display = 'none';
+    const placeholder = document.createElement('div');
+    placeholder.className = 'image-placeholder';
+    placeholder.innerHTML = '🐕<br><small>No image available</small>';
+    placeholder.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #7f8c8d;
+        font-size: 2em;
+        background: #f8f9fa;
+    `;
+    img.parentNode.appendChild(placeholder);
+}
+</script>
 
 <style>
 .dogs-app {
@@ -225,6 +335,21 @@ include_once __DIR__ . '/../header.php';
     margin-bottom: 15px;
     color: white;
     font-size: 1.8rem;
+}
+
+.dog-image {
+    width: 100%;
+    height: 200px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f8f9fa;
+}
+
+.dog-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .dog-info h3 {
@@ -324,6 +449,13 @@ include_once __DIR__ . '/../header.php';
 .form-group textarea {
     min-height: 100px;
     resize: vertical;
+}
+
+.form-help {
+    font-size: 0.85rem;
+    color: #7f8c8d;
+    margin-top: 5px;
+    display: block;
 }
 
 .btn-submit {
