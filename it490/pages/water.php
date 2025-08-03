@@ -1,8 +1,6 @@
 <?php
-
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-
 
 require_once __DIR__ . '/../auth.php';
 if (!function_exists('requireAuth')) {
@@ -30,6 +28,12 @@ function getWaterFromDatabase($conn, $dogId) {
     return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
 
+function deleteWaterFromDatabase($conn, $waterId, $userId) {
+    $stmt = $conn->prepare("DELETE FROM WATER_TRACKING WHERE id = ? AND user_id = ?");
+    $stmt->bind_param("ii", $waterId, $userId);
+    return $stmt->execute();
+}
+
 $dogId = isset($_GET['dog_id']) ? (int)$_GET['dog_id'] : 0;
 if ($dogId <= 0) {
     header("Location: dogs.php");
@@ -43,6 +47,35 @@ $msg = isset($_GET['msg']) ? trim($_GET['msg']) : '';
 $dog = null;
 $totalToday = 0;
 $dailyGoal = 1000; 
+
+// Handle delete request
+if (isset($_GET['delete'])) {
+    $waterId = (int)$_GET['delete'];
+    try {
+        $payload = [
+            'type' => 'delete_water',
+            'water_id' => $waterId,
+            'user_id' => $user['id'] ?? 0
+        ];
+        
+        $resp = @sendMessage($payload);
+        
+        if (empty($resp) || ($resp['status'] ?? '') !== 'success') {
+            if (deleteWaterFromDatabase($conn, $waterId, $user['id'] ?? 0)) {
+                $redirectMsg = urlencode('Water entry deleted successfully');
+            } else {
+                throw new Exception('Failed to delete water entry');
+            }
+        } else {
+            $redirectMsg = urlencode($resp['message'] ?? 'Water entry deleted successfully');
+        }
+        
+        header("Location: water.php?dog_id={$dogId}&msg={$redirectMsg}");
+        exit();
+    } catch (Exception $e) {
+        $waterResp['message'] = 'Error: ' . $e->getMessage();
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
@@ -198,6 +231,7 @@ if (file_exists($headerPath)) {
                                     <th><i class="fas fa-water"></i> Amount</th>
                                     <th><i class="fas fa-clock"></i> Time</th>
                                     <th><i class="fas fa-comment"></i> Notes</th>
+                                    <th><i class="fas fa-trash-alt"></i> Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -206,6 +240,11 @@ if (file_exists($headerPath)) {
                                         <td><?= htmlspecialchars($entry['amount_ml'] ?? '') ?> ml</td>
                                         <td><?= isset($entry['timestamp']) ? date('M j, g:i a', strtotime($entry['timestamp'])) : '' ?></td>
                                         <td><?= !empty($entry['notes']) ? htmlspecialchars($entry['notes']) : '<span class="no-notes">No notes</span>' ?></td>
+                                        <td>
+                                            <a href="#" class="delete-link" data-water-id="<?= $entry['id'] ?>" data-dog-id="<?= $dogId ?>">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </a>
+                                        </td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -213,6 +252,23 @@ if (file_exists($headerPath)) {
                     </div>
                 <?php endif; ?>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Confirm Deletion</h3>
+            <span class="close-modal">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete this water entry? This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel">Cancel</button>
+            <a id="confirmDelete" class="btn-delete">Delete Permanently</a>
         </div>
     </div>
 </div>
@@ -519,6 +575,124 @@ tr:hover {
     font-style: italic;
 }
 
+.delete-link {
+    color: var(--secondary-color);
+    transition: color 0.3s;
+}
+
+.delete-link:hover {
+    color: #c0392b;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from {opacity: 0;}
+    to {opacity: 1;}
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 10% auto;
+    padding: 0;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    overflow: hidden;
+    animation: slideIn 0.3s;
+}
+
+@keyframes slideIn {
+    from {transform: translateY(-50px); opacity: 0;}
+    to {transform: translateY(0); opacity: 1;}
+}
+
+.modal-header {
+    padding: 20px;
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.4rem;
+}
+
+.close-modal {
+    font-size: 1.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.close-modal:hover {
+    color: #ecf0f1;
+}
+
+.modal-body {
+    padding: 20px;
+    border-bottom: 1px solid #ecf0f1;
+}
+
+.modal-body p {
+    margin: 0 0 15px;
+    color: #2c3e50;
+    line-height: 1.5;
+}
+
+.modal-footer {
+    padding: 15px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.btn-cancel, .btn-delete {
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: none;
+    font-size: 0.9rem;
+}
+
+.btn-cancel {
+    background-color: #ecf0f1;
+    color: #7f8c8d;
+}
+
+.btn-cancel:hover {
+    background-color: #d5dbdb;
+}
+
+.btn-delete {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-delete:hover {
+    background: linear-gradient(135deg, #c0392b, #e74c3c);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
 @media (max-width: 900px) {
     .content-grid {
         grid-template-columns: 1fr;
@@ -556,8 +730,48 @@ tr:hover {
     .water-form {
         padding: 20px;
     }
+    
+    th, td {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+    }
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('deleteModal');
+    const deleteLinks = document.querySelectorAll('.delete-link');
+    const confirmDeleteBtn = document.getElementById('confirmDelete');
+    const closeModal = document.querySelector('.close-modal');
+    const cancelBtn = document.querySelector('.btn-cancel');
+    
+    deleteLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const waterId = this.getAttribute('data-water-id');
+            const dogId = this.getAttribute('data-dog-id');
+            
+            confirmDeleteBtn.href = `water.php?dog_id=${dogId}&delete=${waterId}`;
+            modal.style.display = 'block';
+        });
+    });
+    
+    closeModal.addEventListener('click', function() {
+        modal.style.display = 'none';
+    });
+    
+    cancelBtn.addEventListener('click', function() {
+        modal.style.display = 'none';
+    });
+    
+    window.addEventListener('click', function(event) {
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    });
+});
+</script>
 
 <?php
 $footerPath = __DIR__ . '/../footer.php';
@@ -567,4 +781,3 @@ if (file_exists($footerPath)) {
     echo '</body></html>';
 }
 ?>
-

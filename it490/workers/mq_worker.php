@@ -497,6 +497,15 @@ $callback = function ($msg) use ($channel, $conn) {
                                     $response = ['status' => 'error', 'message' => 'Failed to delete meal'];
                                 }
                                 break;
+                            case 'delete_water':
+                                $stmt = $conn->prepare("DELETE FROM WATER_TRACKING WHERE id = ? AND user_id = ?");
+                                $stmt->bind_param("ii", $payload['water_id'], $payload['user_id']);
+                                if ($stmt->execute()) {
+                                    $response = ['status' => 'success', 'message' => 'Water entry deleted'];
+                                } else {
+                                    $response = ['status' => 'error', 'message' => 'Failed to delete water entry'];
+                                }
+                                break;
 
             default:
                 $response['message'] = "Unsupported action type";

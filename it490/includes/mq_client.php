@@ -189,6 +189,11 @@ function sendMessage(array $payload): array {
                             throw new InvalidArgumentException('meal_id is required');
                         }
                         break;
+            case 'delete_water':
+                if (empty($payload['water_id'])) {
+                    throw new InvalidArgumentException('water_id is required');
+                }
+                break;
 
         default:
             throw new InvalidArgumentException("Unsupported message type: {$payload['type']}");
