@@ -195,6 +195,19 @@ function sendMessage(array $payload): array {
                 }
                 break;
 
+            case 'delete_task':
+                if (empty($payload['task_id'])) {
+                    throw new InvalidArgumentException('task_id is required');
+                }
+                break;
+            case 'delete_medication':
+                foreach (['med_id', 'user_id'] as $f) {
+                    if (empty($payload[$f])) {
+                        throw new InvalidArgumentException("$f is required");
+                    }
+                }
+                break;
+
         default:
             throw new InvalidArgumentException("Unsupported message type: {$payload['type']}");
     }

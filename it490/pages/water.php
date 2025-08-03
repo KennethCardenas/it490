@@ -231,7 +231,7 @@ if (file_exists($headerPath)) {
                                     <th><i class="fas fa-water"></i> Amount</th>
                                     <th><i class="fas fa-clock"></i> Time</th>
                                     <th><i class="fas fa-comment"></i> Notes</th>
-                                    <th><i class="fas fa-trash-alt"></i> Actions</th>
+                                    <th><i class="fas fa-cog"></i> Actions</th>
                                 </tr>
                             </thead>
                             <tbody>

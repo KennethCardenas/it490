@@ -222,6 +222,7 @@ include_once __DIR__ . '/../header.php';
                                     <th><i class="fas fa-weight"></i> Amount</th>
                                     <th><i class="fas fa-clock"></i> Time</th>
                                     <th><i class="fas fa-comment"></i> Notes</th>
+                                    <th><i class="fas fa-cog"></i> Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -233,7 +234,7 @@ include_once __DIR__ . '/../header.php';
                                         <td><?= !empty($meal['notes']) ? htmlspecialchars($meal['notes']) : '<span class="no-notes">No notes</span>' ?></td>
                                         <td>
                                             <a href="#" class="delete-link" data-meal-id="<?= $meal['id'] ?>">
-                                                <i class="fas fa-trash-alt"></i> Delete
+                                                <i class="fas fa-trash-alt"></i> 
                                             </a>
                                         </td>
                                     </tr>
