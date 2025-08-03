@@ -5,8 +5,10 @@ requireAuth();
 $user = $_SESSION['user'];
 include_once __DIR__ . '/../includes/mq_client.php';
 
+$message = $_SESSION['message'] ?? '';
+unset($_SESSION['message']);
+
 // Handle form submission
-$message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $resp = sendMessage([
         'type'    => 'lost_dogs_create',
@@ -19,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'photo_url'=> trim($_POST['photo_url']),
         'description'=> trim($_POST['description']),
     ]);
-    $message = $resp['message'] ?? '';
+    $message = $resp['message'] ?? $message;
 }
 
 // Fetch active alerts
@@ -80,7 +82,8 @@ include_once __DIR__ . '/../header.php';
                 <img src="<?= htmlspecialchars($a['photo_url']) ?>" class="thumbnail" alt="Lost dog photo" />
             <?php endif; ?>
             <p><?= htmlspecialchars($a['description']) ?></p>
-            <form method="POST" action="../send_user_request.php?type=lost_dogs_update" class="form-inline">
+            <form method="POST" action="../send_user_request.php" class="form-inline">
+                <input type="hidden" name="type" value="lost_dogs_update" />
                 <input type="hidden" name="id" value="<?= htmlspecialchars($a['id']) ?>" />
                 <button name="status" value="found" class="btn small">Mark Found</button>
             </form>

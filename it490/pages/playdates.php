@@ -17,8 +17,8 @@ foreach ([
 // fetch playdates
 $resp = sendMessage(array_merge(['type'=>'playdates_list'], $filters));
 $playdates = $resp['playdates'] ?? [];
-
-$message = '';
+$message = $_SESSION['message'] ?? '';
+unset($_SESSION['message']);
 
 // handle create submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -96,7 +96,8 @@ include_once __DIR__ . '/../header.php';
       <h3><?= htmlspecialchars($p['title']) ?></h3>
       <p><?= htmlspecialchars($p['scheduled_at']) ?> @ <?= htmlspecialchars($p['location']) ?></p>
       <p><?= htmlspecialchars($p['description']) ?></p>
-      <form method="POST" action="../send_user_request.php?type=playdate_request" class="form-inline">
+      <form method="POST" action="../send_user_request.php" class="form-inline">
+        <input type="hidden" name="type" value="playdate_request">
         <input type="hidden" name="target_owner_id" value="<?= htmlspecialchars($p['created_by']) ?>">
         <input type="hidden" name="dog_size_match" value="Medium">
         <input name="location_preference" placeholder="Location" required class="input">
