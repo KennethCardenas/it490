@@ -17,12 +17,6 @@ $user = $_SESSION['user'];
             
             <div class="welcome-content">
                 <p class="user-email">Email: <?= htmlspecialchars($user['email']) ?></p>
-                <p class="user-role">Role: <span class="role-badge role-<?= htmlspecialchars($user['role'] ?? 'unknown') ?>"><?= ucfirst(htmlspecialchars($user['role'] ?? 'ROLE NOT SET')) ?></span></p>
-                <?php if (!isset($user['role']) || empty($user['role'])): ?>
-                    <div class="alert alert-error" style="margin: 1rem 0; padding: 1rem; background: #ffebee; border: 1px solid #f5c6cb; border-radius: 4px; color: #721c24;">
-                        <strong>⚠️ Role Not Set:</strong> Your account doesn't have a role assigned. You need to log out and log back in, or contact an admin to assign you a role.
-                    </div>
-                <?php endif; ?>
                 <p class="welcome-message">You're now logged in to your account. Here's what's happening today:</p>
                 
                 <div class="stats-grid">
