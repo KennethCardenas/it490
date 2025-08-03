@@ -488,6 +488,16 @@ $callback = function ($msg) use ($channel, $conn) {
                             }
                             break;
 
+                            case 'delete_meal':
+                                $stmt = $conn->prepare("DELETE FROM MEAL_TRACKING WHERE id = ? AND user_id = ?");
+                                $stmt->bind_param("ii", $payload['meal_id'], $payload['user_id']);
+                                if ($stmt->execute()) {
+                                    $response = ['status' => 'success', 'message' => 'Meal deleted'];
+                                } else {
+                                    $response = ['status' => 'error', 'message' => 'Failed to delete meal'];
+                                }
+                                break;
+
             default:
                 $response['message'] = "Unsupported action type";
                 $unknown = $payload['type'] ?? 'unknown';

@@ -14,6 +14,34 @@ if ($dogId <= 0) {
     header("Location: dogs.php");
     exit();
 }
+if (isset($_GET['delete_meal'])) {
+    $mealId = (int)$_GET['delete_meal'];
+    try {
+        $payload = [
+            'type' => 'delete_meal',
+            'meal_id' => $mealId,
+            'user_id' => $user['id']
+        ];
+        
+        $mqResponse = @sendMessage($payload);
+        
+        if (empty($mqResponse) || ($mqResponse['status'] ?? '') !== 'success') {
+            $stmt = $conn->prepare("DELETE FROM MEAL_TRACKING WHERE id = ? AND user_id = ?");
+            $stmt->bind_param("ii", $mealId, $user['id']);
+            if ($stmt->execute()) {
+                $_SESSION['meal_message'] = 'Meal deleted successfully';
+            } else {
+                throw new Exception('Failed to delete meal');
+            }
+        } else {
+            $_SESSION['meal_message'] = $mqResponse['message'] ?? 'Meal deleted successfully';
+        }
+    } catch (Exception $e) {
+        $_SESSION['meal_message'] = 'Error: ' . $e->getMessage();
+    }
+    header("Location: meal.php?dog_id=$dogId");
+    exit();
+}
 
 function addMealToDatabase($conn, $dogId, $userId, $mealType, $amount, $notes) {
     $stmt = $conn->prepare("INSERT INTO MEAL_TRACKING (dog_id, user_id, meal_type, amount, notes) VALUES (?, ?, ?, ?, ?)");
@@ -127,6 +155,22 @@ include_once __DIR__ . '/../header.php';
             </div>
         </div>
 
+        <div id="deleteModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Confirm Deletion</h3>
+            <span class="close-modal">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete this meal record? This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel">Cancel</button>
+            <a id="confirmDelete" class="btn-delete">Delete Permanently</a>
+        </div>
+    </div>
+</div>
+
         <div class="content-grid">
             <div class="form-card">
                 <div class="card-header">
@@ -187,6 +231,11 @@ include_once __DIR__ . '/../header.php';
                                         <td><?= htmlspecialchars($meal['amount'] ?? '') ?> cups</td>
                                         <td><?= isset($meal['timestamp']) ? date('M j, g:i a', strtotime($meal['timestamp'])) : '' ?></td>
                                         <td><?= !empty($meal['notes']) ? htmlspecialchars($meal['notes']) : '<span class="no-notes">No notes</span>' ?></td>
+                                        <td>
+                                            <a href="#" class="delete-link" data-meal-id="<?= $meal['id'] ?>">
+                                                <i class="fas fa-trash-alt"></i> Delete
+                                            </a>
+                                        </td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -199,6 +248,131 @@ include_once __DIR__ . '/../header.php';
 </div>
 
 <style>
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from {opacity: 0;}
+    to {opacity: 1;}
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 10% auto;
+    padding: 0;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    overflow: hidden;
+    animation: slideIn 0.3s;
+}
+
+@keyframes slideIn {
+    from {transform: translateY(-50px); opacity: 0;}
+    to {transform: translateY(0); opacity: 1;}
+}
+
+.modal-header {
+    padding: 20px;
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.4rem;
+}
+
+.close-modal {
+    font-size: 1.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.close-modal:hover {
+    color: #ecf0f1;
+}
+
+.modal-body {
+    padding: 20px;
+    border-bottom: 1px solid #ecf0f1;
+}
+
+.modal-body p {
+    margin: 0 0 15px;
+    color: #2c3e50;
+    line-height: 1.5;
+}
+
+.modal-footer {
+    padding: 15px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.btn-cancel, .btn-delete {
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: none;
+    font-size: 0.9rem;
+}
+
+.btn-cancel {
+    background-color: #ecf0f1;
+    color: #7f8c8d;
+}
+
+.btn-cancel:hover {
+    background-color: #d5dbdb;
+}
+
+.btn-delete {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-delete:hover {
+    background: linear-gradient(135deg, #c0392b, #e74c3c);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.delete-link {
+    color: #e74c3c;
+    text-decoration: none;
+}
+
+.delete-link:hover {
+    color: #c0392b;
+    text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+    .modal-content {
+        margin: 20% auto;
+        width: 95%;
+    }
+}
 .meal-app {
     max-width: 1200px;
     margin: 0 auto;
@@ -378,6 +552,40 @@ th, td {
     }
 }
 </style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('deleteModal');
+    const deleteLinks = document.querySelectorAll('.delete-link');
+    const confirmDeleteBtn = document.getElementById('confirmDelete');
+    const closeModal = document.querySelector('.close-modal');
+    const cancelBtn = document.querySelector('.btn-cancel');
+    
+    deleteLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const mealId = this.getAttribute('data-meal-id');
+            
+            confirmDeleteBtn.href = `meal.php?delete_meal=${mealId}&dog_id=<?= $dogId ?>`;
+            
+            modal.style.display = 'block';
+        });
+    });
+    
+    closeModal.addEventListener('click', function() {
+        modal.style.display = 'none';
+    });
+    
+    cancelBtn.addEventListener('click', function() {
+        modal.style.display = 'none';
+    });
+    
+    window.addEventListener('click', function(event) {
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    });
+});
+</script>
 
 <?php include_once __DIR__ . '/../footer.php'; ?>
 
