@@ -14,7 +14,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'sitter_email'     => trim($_POST['sitter_email']),
         'permission_level' => $_POST['permission_level'],
     ]);
-    $message = $resp['message'] ?? '';
+    if (($resp['status'] ?? '') === 'success') {
+        $message = ($resp['message'] ?? '') . ' Code: ' . ($resp['code'] ?? '');
+    } else {
+        $message = $resp['message'] ?? '';
+    }
 }
 // always fetch current list
 $list = sendMessage(['type'=>'invite_list','user_id'=>$user['id']]);

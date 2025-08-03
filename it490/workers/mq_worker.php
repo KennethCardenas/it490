@@ -276,10 +276,70 @@ $callback = function ($msg) use ($channel, $conn) {
                     $waterEntries = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                     $response = ['status' => 'success', 'entries' => $waterEntries];
                     break;
-		
-		case 'lost_dogs_create':
-        	    $stmt = $conn->prepare(
-            	    "INSERT INTO lost_dogs
+
+                case 'invite_create':
+                    $code = bin2hex(random_bytes(4));
+                    $stmt = $conn->prepare(
+                        "INSERT INTO SITTER_INVITES (owner_id,dog_id,sitter_email,permission_level,code,status,expires_at) " .
+                        "VALUES (?,?,?,?,?,'pending', DATE_ADD(NOW(), INTERVAL 7 DAY))"
+                    );
+                    $stmt->bind_param(
+                        'iisss',
+                        $payload['user_id'],
+                        $payload['dog_id'],
+                        $payload['sitter_email'],
+                        $payload['permission_level'],
+                        $code
+                    );
+                    if ($stmt->execute()) {
+                        $response = ['status' => 'success', 'message' => 'Invite created', 'code' => $code, 'id' => $stmt->insert_id];
+                        echo "Invite created for dog {$payload['dog_id']}\n";
+                    } else {
+                        $response['message'] = 'Failed to create invite: ' . $conn->error;
+                        echo "Invite creation failed\n";
+                    }
+                    break;
+
+                case 'invite_list':
+                    $stmt = $conn->prepare("SELECT id,code,dog_id,sitter_email,permission_level,status,expires_at FROM SITTER_INVITES WHERE owner_id = ? ORDER BY created_at DESC");
+                    $stmt->bind_param('i', $payload['user_id']);
+                    if ($stmt->execute()) {
+                        $response = ['status' => 'success', 'invites' => $stmt->get_result()->fetch_all(MYSQLI_ASSOC)];
+                    } else {
+                        $response['message'] = 'Failed to fetch invites: ' . $conn->error;
+                    }
+                    break;
+
+                case 'invite_update':
+                    if (!empty($payload['code'])) {
+                        if (!empty($payload['accepted_by'])) {
+                            $stmt = $conn->prepare("UPDATE SITTER_INVITES SET status = ?, accepted_by = ? WHERE code = ?");
+                            $stmt->bind_param('sis', $payload['status'], $payload['accepted_by'], $payload['code']);
+                        } else {
+                            $stmt = $conn->prepare("UPDATE SITTER_INVITES SET status = ? WHERE code = ?");
+                            $stmt->bind_param('ss', $payload['status'], $payload['code']);
+                        }
+                    } else {
+                        if (!empty($payload['accepted_by'])) {
+                            $stmt = $conn->prepare("UPDATE SITTER_INVITES SET status = ?, accepted_by = ? WHERE id = ?");
+                            $stmt->bind_param('sii', $payload['status'], $payload['accepted_by'], $payload['id']);
+                        } else {
+                            $stmt = $conn->prepare("UPDATE SITTER_INVITES SET status = ? WHERE id = ?");
+                            $stmt->bind_param('si', $payload['status'], $payload['id']);
+                        }
+                    }
+                    if ($stmt->execute()) {
+                        $response = ['status' => 'success', 'message' => 'Invite updated'];
+                        echo "Invite updated to {$payload['status']}\n";
+                    } else {
+                        $response['message'] = 'Failed to update invite: ' . $conn->error;
+                        echo "Invite update failed\n";
+                    }
+                    break;
+
+                case 'lost_dogs_create':
+                    $stmt = $conn->prepare(
+                    "INSERT INTO lost_dogs
                	       (dog_id,dog_name,description,last_lat,last_lng,alert_radius,photo_url,reported_by)
              	    VALUES(?,?,?,?,?,?,?,?)"
         	    );

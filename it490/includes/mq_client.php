@@ -109,10 +109,8 @@ function sendMessage(array $payload): array {
             break;
 
         case 'invite_update':
-            foreach (['id','status'] as $f) {
-                if (empty($payload[$f])) {
-                    throw new InvalidArgumentException("$f is required");
-                }
+            if (empty($payload['status']) || (empty($payload['id']) && empty($payload['code']))) {
+                throw new InvalidArgumentException('status and id or code are required');
             }
             break;
 

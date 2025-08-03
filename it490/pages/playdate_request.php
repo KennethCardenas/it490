@@ -2,11 +2,7 @@
 include_once __DIR__ . '/../auth.php';
 requireAuth();
 $user = $_SESSION['user'];
-<<<<<<< HEAD
-include_once __DIR__ . '/../includes/.mq_client.php';
-=======
 include_once __DIR__ . '/../includes/mq_client.php';
->>>>>>> 48f3e61 (modified playdates)
 
 // fetch requests
 $resp = sendMessage(['type'=>'playdate_requests_list','user_id'=>$user['id']]);
