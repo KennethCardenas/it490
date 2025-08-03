@@ -176,6 +176,14 @@ function sendMessage(array $payload): array {
                 }
                 break;
 
+                case 'delete_dog':
+                    foreach (['dog_id', 'user_id'] as $f) {
+                        if (empty($payload[$f])) {
+                            throw new InvalidArgumentException("$f is required");
+                        }
+                    }
+                    break;
+
         default:
             throw new InvalidArgumentException("Unsupported message type: {$payload['type']}");
     }

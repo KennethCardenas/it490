@@ -4,9 +4,34 @@ requireAuth();
 
 $user = $_SESSION['user'];
 require_once __DIR__ . '/../api/connect.php';
+require_once __DIR__ . '/../includes/mq_client.php';
 
-// Handle add dog
-$addMessage = '';
+if (isset($_GET['delete_dog'])) {
+    $dogId = (int)$_GET['delete_dog'];
+    
+    try {
+        $payload = [
+            'type' => 'delete_dog',
+            'dog_id' => $dogId,
+            'user_id' => $user['id']
+        ];
+        
+        $response = sendMessage($payload);
+        
+        if ($response['status'] === 'success') {
+            $addMessage = 'Dog deleted successfully!';
+        } else {
+            $addMessage = $response['message'] ?? 'Failed to delete dog';
+        }
+    } catch (Exception $e) {
+        $addMessage = 'Error: ' . $e->getMessage();
+    }
+    
+    header("Location: dogs.php?message=" . urlencode($addMessage));
+    exit();
+}
+
+$addMessage = $_GET['message'] ?? '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $conn->prepare(
         "INSERT INTO DOGS (owner_id, name, breed, health_status, notes) VALUES (?, ?, ?, ?, ?)"
@@ -33,7 +58,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->close();
 }
 
-// Fetch dogs
 $dogs = [];
 $stmt = $conn->prepare("SELECT * FROM DOGS WHERE owner_id = ?");
 $stmt->bind_param("i", $user['id']);
@@ -57,11 +81,29 @@ include_once __DIR__ . '/../header.php';
     </div>
 
     <?php if (!empty($addMessage)): ?>
-        <div class="alert <?= strpos($addMessage, 'Failed') !== false ? 'alert-error' : 'alert-success' ?>">
-            <i class="fas <?= strpos($addMessage, 'Failed') !== false ? 'fa-exclamation-circle' : 'fa-check-circle' ?>"></i>
+        <div class="alert <?= strpos($addMessage, 'Failed') !== false || strpos($addMessage, 'Error') !== false ? 'alert-error' : 'alert-success' ?>">
+            <i class="fas <?= strpos($addMessage, 'Failed') !== false || strpos($addMessage, 'Error') !== false ? 'fa-exclamation-circle' : 'fa-check-circle' ?>"></i>
             <?= htmlspecialchars($addMessage) ?>
         </div>
     <?php endif; ?>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Confirm Deletion</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <span id="dogName"></span>? This action cannot be undone.</p>
+                <p>All associated data (tasks, meals, care logs, etc.) will also be permanently deleted.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel">Cancel</button>
+                <a id="confirmDelete" class="btn-delete">Delete Permanently</a>
+            </div>
+        </div>
+    </div>
 
     <div class="main-container">
         <div class="dogs-grid">
@@ -96,6 +138,9 @@ include_once __DIR__ . '/../header.php';
                             </a>
                             <a href="behavior.php?dog_id=<?= $d['id'] ?>" class="action-link" title="Behavior">
                                 <i class="fas fa-brain"></i>
+                            </a>
+                            <a href="#" class="action-link delete-link" title="Delete" data-dog-id="<?= $d['id'] ?>" data-dog-name="<?= htmlspecialchars($d['name']) ?>">
+                                <i class="fas fa-trash-alt"></i>
                             </a>
                         </div>
                     </div>
@@ -266,6 +311,14 @@ include_once __DIR__ . '/../header.php';
     color: #3498db;
 }
 
+.delete-link {
+    color: #e74c3c !important;
+}
+
+.delete-link:hover {
+    color: #c0392b !important;
+}
+
 .add-dog-card {
     background: #fff;
     border-radius: 12px;
@@ -297,7 +350,7 @@ include_once __DIR__ . '/../header.php';
     margin-bottom: 0;
     display: flex;
     flex-direction: column;
-    align-items: flex-start; /* Align label and input left */
+    align-items: flex-start;
 }
 
 .form-group label {
@@ -305,7 +358,7 @@ include_once __DIR__ . '/../header.php';
     margin-bottom: 8px;
     font-weight: 600;
     color: #2c3e50;
-    margin-left: 2px; /* small alignment tweak */
+    margin-left: 2px;
 }
 
 .form-group input,
@@ -347,6 +400,115 @@ include_once __DIR__ . '/../header.php';
     background: linear-gradient(135deg, #2980b9, #3498db);
 }
 
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from {opacity: 0;}
+    to {opacity: 1;}
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 10% auto;
+    padding: 0;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    overflow: hidden;
+    animation: slideIn 0.3s;
+}
+
+@keyframes slideIn {
+    from {transform: translateY(-50px); opacity: 0;}
+    to {transform: translateY(0); opacity: 1;}
+}
+
+.modal-header {
+    padding: 20px;
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.4rem;
+}
+
+.close-modal {
+    font-size: 1.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.close-modal:hover {
+    color: #ecf0f1;
+}
+
+.modal-body {
+    padding: 20px;
+    border-bottom: 1px solid #ecf0f1;
+}
+
+.modal-body p {
+    margin: 0 0 15px;
+    color: #2c3e50;
+    line-height: 1.5;
+}
+
+.modal-footer {
+    padding: 15px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.btn-cancel, .btn-delete {
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: none;
+    font-size: 0.9rem;
+}
+
+.btn-cancel {
+    background-color: #ecf0f1;
+    color: #7f8c8d;
+}
+
+.btn-cancel:hover {
+    background-color: #d5dbdb;
+}
+
+.btn-delete {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-delete:hover {
+    background: linear-gradient(135deg, #c0392b, #e74c3c);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
 @media (max-width: 768px) {
     .dogs-grid {
         grid-template-columns: 1fr;
@@ -355,9 +517,52 @@ include_once __DIR__ . '/../header.php';
     .dogs-header h1 {
         font-size: 2rem;
     }
+    
+    .modal-content {
+        margin: 20% auto;
+        width: 95%;
+    }
 }
-
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('deleteModal');
+    const deleteLinks = document.querySelectorAll('.delete-link');
+    const dogNameSpan = document.getElementById('dogName');
+    const confirmDeleteBtn = document.getElementById('confirmDelete');
+    const closeModal = document.querySelector('.close-modal');
+    const cancelBtn = document.querySelector('.btn-cancel');
+    
+    deleteLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const dogId = this.getAttribute('data-dog-id');
+            const dogName = this.getAttribute('data-dog-name');
+            
+            dogNameSpan.textContent = dogName;
+            
+            confirmDeleteBtn.href = `dogs.php?delete_dog=${dogId}`;
+            
+            modal.style.display = 'block';
+        });
+    });
+    
+    closeModal.addEventListener('click', function() {
+        modal.style.display = 'none';
+    });
+    
+    cancelBtn.addEventListener('click', function() {
+        modal.style.display = 'none';
+    });
+    
+    window.addEventListener('click', function(event) {
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    });
+});
+</script>
 
 <?php $conn->close(); ?>
 <?php include_once __DIR__ . '/../footer.php'; ?>
