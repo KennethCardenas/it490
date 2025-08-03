@@ -3,7 +3,7 @@
 include_once __DIR__ . '/../auth.php';
 requireAuth();
 $user = $_SESSION['user'];
-include_once __DIR__ . '/../mq_client.php';
+include_once __DIR__ . '/../includes/mq_client.php';
 
 // filters from GET
 $filters = [];
@@ -15,30 +15,39 @@ foreach ([
     }
 }
 // fetch playdates
-echo "[x] Received playdates_list request\n";
 $resp = sendMessage(array_merge(['type'=>'playdates_list'], $filters));
-echo "[+] playdates_list response received\n";
 $playdates = $resp['playdates'] ?? [];
+
+$message = '';
 
 // handle create submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    echo "[x] Sending playdates_create request\n";
-    $resp = sendMessage([
-        'type' => 'playdates_create',
-        'user_id' => $user['id'],
-        'title' => $_POST['title'],
-        'description' => $_POST['description'],
-        'scheduled_at' => $_POST['scheduled_at'],
-        'location' => $_POST['location'],
-        'age_range' => $_POST['age_range'],
-        'size' => $_POST['size'],
-        'energy_level' => $_POST['energy_level'],
-        'temperament' => $_POST['temperament'],
-        'play_style' => $_POST['play_style'],
-        'gender_pref' => $_POST['gender_pref'],
-    ]);
-    echo "[+] playdates_create response: " . json_encode($resp) . "\n";
-    $message = $resp['message'] ?? '';
+    try {
+        $resp = sendMessage([
+            'type' => 'playdates_create',
+            'user_id' => $user['id'],
+            'title' => $_POST['title'] ?? '',
+            'description' => $_POST['description'] ?? '',
+            'scheduled_at' => $_POST['scheduled_at'] ?? '',
+            'location' => $_POST['location'] ?? '',
+            'age_range' => $_POST['age_range'] ?? '',
+            'size' => $_POST['size'] ?? '',
+            'energy_level' => $_POST['energy_level'] ?? '',
+            'temperament' => $_POST['temperament'] ?? '',
+            'play_style' => $_POST['play_style'] ?? '',
+            'gender_pref' => $_POST['gender_pref'] ?? '',
+        ]);
+        
+        // Redirect to prevent resubmission
+        if ($resp['status'] === 'success') {
+            header('Location: /it490/pages/playdates.php?success=1');
+            exit();
+        } else {
+            $message = $resp['message'] ?? 'Failed to create playdate';
+        }
+    } catch (Exception $e) {
+        $message = "An error occurred: " . $e->getMessage();
+    }
 }
 
 $title = 'Playdates';
@@ -49,6 +58,12 @@ include_once __DIR__ . '/../header.php';
 
   <?php if (!empty($message)): ?>
     <div class="alert"><?= htmlspecialchars($message) ?></div>
+  <?php endif; ?>
+  
+  <?php if (isset($_GET['success'])): ?>
+    <div class="alert" style="background: #d4edda; color: #155724; border: 1px solid #c3e6cb;">
+      Playdate created successfully!
+    </div>
   <?php endif; ?>
 
   <form method="GET" class="form form-inline">

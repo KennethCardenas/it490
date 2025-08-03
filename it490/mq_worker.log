@@ -1,7 +1,8 @@
-nohup: ignoring input
  [*] Connected to RabbitMQ at 100.87.203.113
  [*] Waiting for messages on 'user_request_queue'. To exit press CTRL+C
- [x] Processing: register
- [+] Registered user: testuser1750720559
- [x] Processing: register
- [+] Registered user: cja48
+ [x] Processing: playdates_list
+Playdate list displayed
+ [x] Processing: playdates_create
+ [+] Playdate created for user 1
+ [x] Processing: playdates_list
+Playdate list displayed
