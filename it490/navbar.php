@@ -23,6 +23,12 @@
                             <i class="fas fa-paw"></i>
                             <span>Dogs</span>
                         </a>
+                        <?php if (isAdmin()): ?>
+                        <a href="/it490/pages/admin.php" class="nav-link">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>Admin</span>
+                        </a>
+                        <?php endif; ?>
                         <a href="/it490/pages/logout.php" class="nav-link">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Logout</span>
