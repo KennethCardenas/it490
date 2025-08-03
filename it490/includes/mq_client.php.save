@@ -115,16 +115,7 @@ function sendMessage(array $payload): array {
                 }
                 break;
             
-            case 'playdates_create':
-    		foreach ([
-        	   'user_id', 'title', 'scheduled_at', 'location', 'age_range',
-        	   'size', 'energy_level', 'temperament', 'play_style', 'gender_pref', 'description'
-    		] as $f) {
-        	    if (empty($payload[$f])) {
-            		throw new InvalidArgumentException("$f is required");
-        	    }
-    		}
-		break;
+            
 
 	    case 'playdates_list':
                 break;
