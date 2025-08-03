@@ -533,6 +533,28 @@ $callback = function ($msg) use ($channel, $conn) {
                                 $response['message'] = 'Failed to delete medication';
                             }
                             break;
+                        case 'delete_care_log':
+                            if (empty($payload['log_id'])) {
+                                throw new InvalidArgumentException('log_id is required');
+                            }
+                            
+                            $stmt = $conn->prepare("DELETE FROM CARE_LOGS WHERE id = ? AND user_id = ?");
+                            $stmt->bind_param("ii", $payload['log_id'], $payload['user_id']);
+                            if ($stmt->execute()) {
+                                $response = ['status' => 'success', 'message' => 'Care log deleted'];
+                            } else {
+                                $response = ['status' => 'error', 'message' => 'Failed to delete care log'];
+                            }
+                            break;
+                            case 'delete_behavior':
+                                $stmt = $conn->prepare("DELETE FROM BEHAVIOR_LOGS WHERE id = ? AND user_id = ?");
+                                $stmt->bind_param("ii", $payload['behavior_id'], $payload['user_id']);
+                                if ($stmt->execute()) {
+                                    $response = ['status' => 'success', 'message' => 'Behavior entry deleted'];
+                                } else {
+                                    $response = ['status' => 'error', 'message' => 'Failed to delete behavior entry'];
+                                }
+                                break;
             default:
                 $response['message'] = "Unsupported action type";
                 $unknown = $payload['type'] ?? 'unknown';

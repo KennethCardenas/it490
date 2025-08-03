@@ -255,7 +255,7 @@ if (file_exists($headerPath)) {
                                         <td>
                                             <?php if (!($entry['completed'] ?? 0)): ?>
                                                 <a href="?dog_id=<?= $dogId ?>&complete=<?= $entry['id'] ?>" class="complete-btn">
-                                                    <i class="fas fa-check"></i> Complete
+                                                <i class="fas <?= $task['completed'] ? 'fa-undo' : 'fa-check' ?>"></i>
                                                 </a>
                                             <?php endif; ?>
                                             <a href="#" class="delete-btn" data-med-id="<?= $entry['id'] ?>" data-med-name="<?= htmlspecialchars($entry['medication']) ?>">

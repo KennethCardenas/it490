@@ -207,6 +207,20 @@ function sendMessage(array $payload): array {
                     }
                 }
                 break;
+            case 'delete_care_log':
+                foreach (['log_id', 'user_id'] as $f) {
+                    if (empty($payload[$f])) {
+                        throw new InvalidArgumentException("$f is required");
+                    }
+                }
+                break;
+                case 'delete_behavior':
+                    foreach (['behavior_id', 'user_id'] as $f) {
+                        if (empty($payload[$f])) {
+                            throw new InvalidArgumentException("$f is required");
+                        }
+                    }
+                    break;
 
         default:
             throw new InvalidArgumentException("Unsupported message type: {$payload['type']}");
