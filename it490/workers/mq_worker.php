@@ -442,6 +442,52 @@ $callback = function ($msg) use ($channel, $conn) {
                         $response = ['status' => 'success', 'entries' => $meals];
                         break;
 
+                        case 'delete_dog':
+                            if (empty($payload['dog_id']) || empty($payload['user_id'])) {
+                                $response = ['status' => 'error', 'message' => 'dog_id and user_id are required'];
+                                break;
+                            }
+                        
+                            try {
+                                $conn->begin_transaction();
+                                
+                                // Delete related records
+                                $tables = [
+                                    'DOG_TASKS',
+                                    'WATER_TRACKING',
+                                    'CARE_LOGS',
+                                    'MEDICATION_SCHEDULES',
+                                    'BEHAVIOR_LOGS',
+                                    'MEAL_TRACKING'
+                                ];
+                                
+                                foreach ($tables as $table) {
+                                    $stmt = $conn->prepare("DELETE FROM $table WHERE dog_id = ?");
+                                    $stmt->bind_param("i", $payload['dog_id']);
+                                    $stmt->execute();
+                                    $stmt->close();
+                                }
+                                
+                                // Delete the dog
+                                $stmt = $conn->prepare("DELETE FROM DOGS WHERE id = ? AND owner_id = ?");
+                                $stmt->bind_param("ii", $payload['dog_id'], $payload['user_id']);
+                                $stmt->execute();
+                                
+                                if ($stmt->affected_rows > 0) {
+                                    $conn->commit();
+                                    $response = ['status' => 'success', 'message' => 'Dog deleted successfully'];
+                                } else {
+                                    $conn->rollback();
+                                    $response = ['status' => 'error', 'message' => 'Dog not found or not owned by user'];
+                                }
+                                
+                                $stmt->close();
+                            } catch (Exception $e) {
+                                $conn->rollback();
+                                $response = ['status' => 'error', 'message' => $e->getMessage()];
+                            }
+                            break;
+
             default:
                 $response['message'] = "Unsupported action type";
                 $unknown = $payload['type'] ?? 'unknown';
