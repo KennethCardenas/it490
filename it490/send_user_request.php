@@ -7,6 +7,7 @@ include_once __DIR__ . '/includes/mq_client.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $type = $_POST['type'] ?? $_GET['type'] ?? '';
+
     $redirect = '/it490/pages/playdates.php';
 
     if ($type === 'playdate_request') {
