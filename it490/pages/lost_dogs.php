@@ -5,8 +5,10 @@ requireAuth();
 $user = $_SESSION['user'];
 include_once __DIR__ . '/../includes/mq_client.php';
 
+$message = $_SESSION['message'] ?? '';
+unset($_SESSION['message']);
+
 // Handle form submission
-$message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $resp = sendMessage([
         'type'    => 'lost_dogs_create',
@@ -19,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'photo_url'=> trim($_POST['photo_url']),
         'description'=> trim($_POST['description']),
     ]);
-    $message = $resp['message'] ?? '';
+    $message = $resp['message'] ?? $message;
 }
 
 // Fetch active alerts
