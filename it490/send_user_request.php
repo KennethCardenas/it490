@@ -14,6 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'type' => 'playdate_request',
             'user_id' => $user['id'],
             'playdate_id' => $_POST['playdate_id'],
+            'recipient_id' => $_POST['recipient_id'],
             'dog_size_match' => $_POST['dog_size_match'],
             'location_preference' => $_POST['location_preference'],
             'custom_message' => $_POST['custom_message'] ?? ''

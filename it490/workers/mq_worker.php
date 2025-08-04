@@ -385,12 +385,13 @@ $callback = function ($msg) use ($channel, $conn) {
 
             case 'playdate_request':
                 $stmt = $conn->prepare(
-                    "INSERT INTO PLAYDATE_REQUESTS (playdate_id, requester_id, dog_size_match, location_preference, custom_message) VALUES (?, ?, ?, ?, ?)"
+                    "INSERT INTO PLAYDATE_REQUESTS (playdate_id, requester_id, recipient_id, dog_size_match, location_preference, custom_message) VALUES (?, ?, ?, ?, ?, ?)"
                 );
                 $stmt->bind_param(
-                    "iisss",
+                    "iiisss",
                     $payload['playdate_id'],
                     $payload['user_id'],
+                    $payload['recipient_id'],
                     $payload['dog_size_match'],
                     $payload['location_preference'],
                     $payload['custom_message']
@@ -406,7 +407,7 @@ $callback = function ($msg) use ($channel, $conn) {
 
             case 'playdate_requests_list':
                 $stmt = $conn->prepare(
-                    "SELECT pr.* FROM PLAYDATE_REQUESTS pr JOIN PLAYDATES p ON pr.playdate_id = p.id WHERE p.created_by = ? ORDER BY pr.id DESC"
+                    "SELECT pr.*, p.title FROM PLAYDATE_REQUESTS pr JOIN PLAYDATES p ON pr.playdate_id = p.id WHERE pr.recipient_id = ? ORDER BY pr.id DESC"
                 );
                 $stmt->bind_param("i", $payload['user_id']);
                 if ($stmt->execute()) {
