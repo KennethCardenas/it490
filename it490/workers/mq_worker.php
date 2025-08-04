@@ -402,7 +402,7 @@ $callback = function ($msg) use ($channel, $conn) {
                 break;
 
             case 'playdate_requests_list':
-                $stmt = $conn->prepare("SELECT pr.*, u.username as requester_name FROM PLAYDATE_REQUESTS pr JOIN USERS u ON pr.requester_id = u.id WHERE pr.target_owner_id = ? ORDER BY pr.created_at DESC");
+                $stmt = $conn->prepare("SELECT * FROM PLAYDATE_REQUESTS WHERE target_owner_id = ? ORDER BY id DESC");
                 $stmt->bind_param("i", $payload['user_id']);
                 if ($stmt->execute()) {
                     $response = ['status' => 'success', 'requests' => $stmt->get_result()->fetch_all(MYSQLI_ASSOC)];
