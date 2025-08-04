@@ -15,26 +15,26 @@ if (!file_exists($mqClientPath)) {
 require_once $mqClientPath;
 require_once __DIR__ . '/../api/connect.php';
 
-function addTaskToDatabase($conn, $dogId, $userId, $title, $description, $dueDate) {
-    $stmt = $conn->prepare("INSERT INTO DOG_TASKS (dog_id, user_id, title, description, due_date) VALUES (?, ?, ?, ?, ?)");
-    $stmt->bind_param("iisss", $dogId, $userId, $title, $description, $dueDate);
+function scheduleMedicationInDatabase($conn, $dogId, $userId, $medication, $dosage, $scheduleTime, $notes) {
+    $stmt = $conn->prepare("INSERT INTO MEDICATION_SCHEDULES (dog_id, user_id, medication, dosage, schedule_time, notes) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("iissss", $dogId, $userId, $medication, $dosage, $scheduleTime, $notes);
     return $stmt->execute();
 }
 
-function toggleTaskInDatabase($conn, $taskId) {
-    $stmt = $conn->prepare("UPDATE DOG_TASKS SET completed = NOT completed WHERE id = ?");
-    $stmt->bind_param("i", $taskId);
+function completeMedicationInDatabase($conn, $medId) {
+    $stmt = $conn->prepare("UPDATE MEDICATION_SCHEDULES SET completed = 1 WHERE id = ?");
+    $stmt->bind_param("i", $medId);
     return $stmt->execute();
 }
 
-function deleteTaskFromDatabase($conn, $taskId) {
-    $stmt = $conn->prepare("DELETE FROM DOG_TASKS WHERE id = ?");
-    $stmt->bind_param("i", $taskId);
+function deleteMedicationInDatabase($conn, $medId, $userId) {
+    $stmt = $conn->prepare("DELETE FROM MEDICATION_SCHEDULES WHERE id = ? AND user_id = ?");
+    $stmt->bind_param("ii", $medId, $userId);
     return $stmt->execute();
 }
 
-function getTasksFromDatabase($conn, $dogId) {
-    $stmt = $conn->prepare("SELECT * FROM DOG_TASKS WHERE dog_id = ? ORDER BY due_date");
+function getMedicationsFromDatabase($conn, $dogId) {
+    $stmt = $conn->prepare("SELECT * FROM MEDICATION_SCHEDULES WHERE dog_id = ? ORDER BY schedule_time");
     $stmt->bind_param("i", $dogId);
     $stmt->execute();
     return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -47,95 +47,94 @@ if ($dogId <= 0) {
 }
 
 $user = $_SESSION['user'] ?? null;
-$taskResp = [];
+$medResp = [];
+$medEntries = [];
 $msg = isset($_GET['msg']) ? trim($_GET['msg']) : '';
 $dog = null;
-$tasks = [];
-
-// Handle task deletion
-if (isset($_GET['delete'])) {
-    $taskId = (int)$_GET['delete'];
-    try {
-        $payload = [
-            'type' => 'delete_task',
-            'task_id' => $taskId
-        ];
-        
-        $response = @sendMessage($payload);
-        
-        if (empty($response) || ($response['status'] ?? '') !== 'success') {
-            if (deleteTaskFromDatabase($conn, $taskId)) {
-                $redirectMsg = urlencode('Task deleted successfully');
-            } else {
-                throw new Exception('Failed to delete task');
-            }
-        } else {
-            $redirectMsg = urlencode($response['message'] ?? 'Task deleted successfully');
-        }
-        
-        header("Location: tasks.php?dog_id={$dogId}&msg={$redirectMsg}");
-        exit();
-    } catch (Exception $e) {
-        $taskResp['message'] = 'Error: ' . $e->getMessage();
-    }
-}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        $title = isset($_POST['title']) ? trim($_POST['title']) : '';
-        $description = isset($_POST['description']) ? trim($_POST['description']) : '';
-        $dueDate = isset($_POST['due_date']) ? trim($_POST['due_date']) : '';
-        
-        if (empty($title) || empty($dueDate)) {
-            throw new Exception('Title and due date are required');
-        }
+        $medication = trim($_POST['medication'] ?? '');
+        $dosage = trim($_POST['dosage'] ?? '');
+        $scheduleTime = trim($_POST['schedule_time'] ?? '');
+        $notes = trim($_POST['notes'] ?? '');
+
+        if (empty($medication)) throw new Exception('Medication name is required');
+        if (empty($scheduleTime)) throw new Exception('Schedule time is required');
 
         $payload = [
-            'type' => 'add_task',
+            'type' => 'schedule_medication',
             'dog_id' => $dogId,
             'user_id' => $user['id'] ?? 0,
-            'title' => $title,
-            'description' => $description,
-            'due_date' => $dueDate
+            'medication' => $medication,
+            'dosage' => $dosage,
+            'schedule_time' => $scheduleTime,
+            'notes' => $notes
         ];
 
-        $taskResp = @sendMessage($payload);
+        $medResp = @sendMessage($payload);
 
-        if (empty($taskResp) || ($taskResp['status'] ?? '') !== 'success') {
-            if (addTaskToDatabase($conn, $dogId, $user['id'] ?? 0, $title, $description, $dueDate)) {
-                $redirectMsg = urlencode('Task added successfully');
+        if (empty($medResp) || ($medResp['status'] ?? '') !== 'success') {
+            if (scheduleMedicationInDatabase($conn, $dogId, $user['id'] ?? 0, $medication, $dosage, $scheduleTime, $notes)) {
+                $redirectMsg = urlencode('Medication scheduled');
             } else {
-                throw new Exception('Failed to add task');
+                throw new Exception('Failed to schedule medication');
             }
         } else {
-            $redirectMsg = urlencode($taskResp['message'] ?? 'Task added successfully');
+            $redirectMsg = urlencode($medResp['message'] ?? 'Medication scheduled');
         }
 
-        header("Location: tasks.php?dog_id={$dogId}&msg={$redirectMsg}");
+        header("Location: medications.php?dog_id={$dogId}&msg={$redirectMsg}");
         exit();
     } catch (Exception $e) {
-        $taskResp['message'] = 'Error: ' . $e->getMessage();
+        $medResp['message'] = 'Error: ' . $e->getMessage();
     }
 }
 
-if (isset($_GET['toggle'])) {
+if (isset($_GET['complete'])) {
     try {
-        $taskId = (int)$_GET['toggle'];
-        if ($taskId > 0) {
-            $resp = @sendMessage(['type' => 'toggle_task', 'task_id' => $taskId]);
+        $medId = (int)$_GET['complete'];
+        if ($medId > 0) {
+            $resp = @sendMessage(['type' => 'complete_medication', 'med_id' => $medId]);
             if (empty($resp) || ($resp['status'] ?? '') !== 'success') {
-                toggleTaskInDatabase($conn, $taskId);
+                completeMedicationInDatabase($conn, $medId);
             }
-            header("Location: tasks.php?dog_id={$dogId}");
+            $redirectMsg = urlencode('Medication marked as completed');
+            header("Location: medications.php?dog_id={$dogId}&msg={$redirectMsg}");
             exit();
         }
     } catch (Exception $e) {
-        $taskResp['message'] = 'Error toggling task: ' . $e->getMessage();
+        $medResp['message'] = 'Error completing medication: ' . $e->getMessage();
+    }
+}
+
+// Handle medication deletion
+if (isset($_GET['delete_med'])) {
+    try {
+        $medId = (int)$_GET['delete_med'];
+        if ($medId > 0) {
+            $payload = [
+                'type' => 'delete_medication',
+                'med_id' => $medId,
+                'user_id' => $user['id'] ?? 0
+            ];
+            
+            $resp = @sendMessage($payload);
+            if (empty($resp) || ($resp['status'] ?? '') !== 'success') {
+                deleteMedicationInDatabase($conn, $medId, $user['id'] ?? 0);
+            }
+            
+            $redirectMsg = urlencode($resp['message'] ?? 'Medication deleted successfully');
+            header("Location: medications.php?dog_id={$dogId}&msg={$redirectMsg}");
+            exit();
+        }
+    } catch (Exception $e) {
+        $medResp['message'] = 'Error deleting medication: ' . $e->getMessage();
     }
 }
 
 if ($msg) {
-    $taskResp['message'] = urldecode($msg);
+    $medResp['message'] = urldecode($msg);
 }
 
 try {
@@ -156,18 +155,17 @@ try {
 }
 
 try {
-    $resp = @sendMessage(['type' => 'get_tasks', 'dog_id' => $dogId]);
+    $resp = @sendMessage(['type' => 'get_medications', 'dog_id' => $dogId]);
     if (($resp['status'] ?? '') === 'success') {
-        $tasks = $resp['tasks'] ?? [];
+        $medEntries = $resp['medications'] ?? [];
     } else {
-        $tasks = getTasksFromDatabase($conn, $dogId);
+        $medEntries = getMedicationsFromDatabase($conn, $dogId);
     }
 } catch (Exception $e) {
-    $tasks = getTasksFromDatabase($conn, $dogId);
+    $medEntries = getMedicationsFromDatabase($conn, $dogId);
 }
 
-$title = "Tasks" . ($dog ? " - " . htmlspecialchars($dog['name']) : "");
-
+$title = "Medications" . ($dog ? " - " . htmlspecialchars($dog['name']) : "");
 $headerPath = __DIR__ . '/../header.php';
 if (file_exists($headerPath)) {
     include_once $headerPath;
@@ -176,27 +174,10 @@ if (file_exists($headerPath)) {
 }
 ?>
 
-<!-- Delete Confirmation Modal -->
-<div id="deleteModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Confirm Deletion</h3>
-            <span class="close-modal">&times;</span>
-        </div>
-        <div class="modal-body">
-            <p>Are you sure you want to delete this task? This action cannot be undone.</p>
-        </div>
-        <div class="modal-footer">
-            <button class="btn-cancel">Cancel</button>
-            <a id="confirmDelete" class="btn-delete">Delete Permanently</a>
-        </div>
-    </div>
-</div>
-
-<div class="tasks-app">
-    <div class="tasks-header">
+<div class="medications-app">
+    <div class="medications-header">
         <div class="header-content">
-            <h1><i class="fas fa-tasks tasks-icon"></i> Task Management</h1>
+            <h1><i class="fas fa-pills medication-icon"></i> Medication Tracker</h1>
             <?php if ($dog): ?>
                 <h2>For <?= htmlspecialchars($dog['name']) ?> <i class="fas fa-paw paw-icon"></i></h2>
             <?php endif; ?>
@@ -204,81 +185,89 @@ if (file_exists($headerPath)) {
     </div>
 
     <div class="main-container">
-        <?php if (!empty($taskResp['message'])): ?>
-            <div class="alert <?= strpos($taskResp['message'], 'Error') !== false ? 'alert-error' : 'alert-success' ?>">
-                <i class="fas <?= strpos($taskResp['message'], 'Error') !== false ? 'fa-exclamation-circle' : 'fa-check-circle' ?>"></i>
-                <?= htmlspecialchars($taskResp['message']) ?>
+        <?php if (!empty($medResp['message'])): ?>
+            <div class="alert <?= strpos($medResp['message'], 'Error') !== false ? 'alert-error' : 'alert-success' ?>">
+                <i class="fas <?= strpos($medResp['message'], 'Error') !== false ? 'fa-exclamation-circle' : 'fa-check-circle' ?>"></i>
+                <?= htmlspecialchars($medResp['message']) ?>
             </div>
         <?php endif; ?>
 
         <div class="content-grid">
             <div class="form-card">
                 <div class="card-header">
-                    <i class="fas fa-plus-circle"></i> Add New Task
+                    <i class="fas fa-plus-circle"></i> Schedule Medication
                 </div>
-                <form method="POST" class="task-form">
+                <form method="POST" class="medication-form">
                     <div class="form-group">
-                        <label for="title"><i class="fas fa-heading"></i> Title</label>
-                        <input type="text" id="title" name="title" required placeholder="Enter task title">
+                        <label for="medication"><i class="fas fa-pills"></i> Medication Name</label>
+                        <input type="text" id="medication" name="medication" required placeholder="Enter medication name">
                     </div>
+                    
                     <div class="form-group">
-                        <label for="due_date"><i class="fas fa-calendar-day"></i> Due Date</label>
-                        <input type="datetime-local" id="due_date" name="due_date" required>
+                        <label for="dosage"><i class="fas fa-prescription-bottle-alt"></i> Dosage</label>
+                        <input type="text" id="dosage" name="dosage" placeholder="Enter dosage (e.g., 5mg)">
                     </div>
+                    
                     <div class="form-group">
-                        <label for="description"><i class="fas fa-align-left"></i> Description</label>
-                        <textarea id="description" name="description" placeholder="Enter task description"></textarea>
+                        <label for="schedule_time"><i class="fas fa-clock"></i> Schedule Time</label>
+                        <input type="datetime-local" id="schedule_time" name="schedule_time" required>
                     </div>
+                    
+                    <div class="form-group">
+                        <label for="notes"><i class="fas fa-comment-dots"></i> Notes</label>
+                        <textarea id="notes" name="notes" placeholder="Any special instructions"></textarea>
+                    </div>
+                    
                     <button type="submit" class="btn-submit">
-                        <i class="fas fa-save"></i> Add Task
+                        <i class="fas fa-save"></i> Schedule Medication
                     </button>
                 </form>
             </div>
 
             <div class="history-card">
                 <div class="card-header">
-                    <i class="fas fa-tasks"></i> Current Tasks
+                    <i class="fas fa-history"></i> Medication Schedule
                 </div>
-                <?php if (empty($tasks)): ?>
+                <?php if (empty($medEntries)): ?>
                     <div class="empty-state">
-                        <i class="fas fa-clipboard-list"></i>
-                        <p>No tasks found</p>
+                        <i class="fas fa-prescription-bottle"></i>
+                        <p>No medications scheduled yet</p>
                     </div>
                 <?php else: ?>
-                    <div class="task-entries">
+                    <div class="medication-entries">
                         <table>
                             <thead>
                                 <tr>
-                                    <th><i class="fas fa-heading"></i> Title</th>
-                                    <th><i class="fas fa-calendar-day"></i> Due Date</th>
+                                    <th><i class="fas fa-pills"></i> Medication</th>
+                                    <th><i class="fas fa-prescription-bottle-alt"></i> Dosage</th>
+                                    <th><i class="fas fa-clock"></i> Time</th>
                                     <th><i class="fas fa-check-circle"></i> Status</th>
                                     <th><i class="fas fa-cog"></i> Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($tasks as $task): ?>
+                                <?php foreach ($medEntries as $entry): ?>
                                     <tr>
-                                        <td><?= htmlspecialchars($task['title'] ?? '') ?></td>
-                                        <td><?= isset($task['due_date']) ? date('M j, g:i a', strtotime($task['due_date'])) : '' ?></td>
+                                        <td><?= htmlspecialchars($entry['medication'] ?? '') ?></td>
+                                        <td><?= htmlspecialchars($entry['dosage'] ?? '') ?></td>
+                                        <td><?= isset($entry['schedule_time']) ? date('M j, g:i a', strtotime($entry['schedule_time'])) : '' ?></td>
+                                        <td><?= ($entry['completed'] ?? 0) ? '<span class="completed">Completed</span>' : '<span class="pending">Pending</span>' ?></td>
                                         <td>
-                                            <span class="status-badge <?= $task['completed'] ? 'completed' : 'pending' ?>">
-                                                <?= $task['completed'] ? 'Completed' : 'Pending' ?>
-                                            </span>
-                                        </td>
-                                        <td class="actions">
-                                            <a href="?dog_id=<?= $dogId ?>&toggle=<?= $task['id'] ?>" class="action-link" title="<?= $task['completed'] ? 'Reopen' : 'Complete' ?>">
+                                            <?php if (!($entry['completed'] ?? 0)): ?>
+                                                <a href="?dog_id=<?= $dogId ?>&complete=<?= $entry['id'] ?>" class="complete-btn">
                                                 <i class="fas <?= $task['completed'] ? 'fa-undo' : 'fa-check' ?>"></i>
-                                            </a>
-                                            <a href="#" class="action-link delete-link" title="Delete" data-task-id="<?= $task['id'] ?>">
+                                                </a>
+                                            <?php endif; ?>
+                                            <a href="#" class="delete-btn" data-med-id="<?= $entry['id'] ?>" data-med-name="<?= htmlspecialchars($entry['medication']) ?>">
                                                 <i class="fas fa-trash-alt"></i>
                                             </a>
                                         </td>
                                     </tr>
-                                    <?php if (!empty($task['description'])): ?>
-                                        <tr class="task-description-row">
-                                            <td colspan="4">
+                                    <?php if (!empty($entry['notes'])): ?>
+                                        <tr class="med-description-row">
+                                            <td colspan="5">
                                                 <div class="description-content">
-                                                    <strong>Description:</strong> <?= htmlspecialchars($task['description']) ?>
+                                                    <strong>Notes:</strong> <?= htmlspecialchars($entry['notes']) ?>
                                                 </div>
                                             </td>
                                         </tr>
@@ -289,6 +278,24 @@ if (file_exists($headerPath)) {
                     </div>
                 <?php endif; ?>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Confirm Deletion</h3>
+            <span class="close-modal">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete <span id="medName"></span>? This action cannot be undone.</p>
+            <p>All associated data will be permanently removed.</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel">Cancel</button>
+            <a id="confirmDelete" class="btn-delete">Delete Permanently</a>
         </div>
     </div>
 </div>
@@ -321,13 +328,13 @@ body {
     background-color: #f5f7fa;
 }
 
-.tasks-app {
+.medications-app {
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
 }
 
-.tasks-header {
+.medications-header {
     text-align: center;
     margin-bottom: 30px;
     padding: 20px 0;
@@ -338,7 +345,7 @@ body {
     margin: 0 auto;
 }
 
-.tasks-header h1 {
+.medications-header h1 {
     font-size: 2.5rem;
     color: var(--primary-color);
     margin-bottom: 10px;
@@ -348,7 +355,7 @@ body {
     gap: 15px;
 }
 
-.tasks-header h2 {
+.medications-header h2 {
     font-size: 1.5rem;
     color: var(--text-color);
     font-weight: 400;
@@ -358,7 +365,7 @@ body {
     gap: 10px;
 }
 
-.tasks-icon {
+.medication-icon {
     color: var(--primary-color);
 }
 
@@ -418,44 +425,57 @@ body {
     gap: 12px;
 }
 
-.task-form {
+.medication-form {
     padding: 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
 }
 
 .form-group {
-    margin-bottom: 25px;
     width: 100%;
+    margin: 0;
+    padding: 0;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     font-weight: 600;
     color: var(--text-color);
     font-size: 1rem;
+    padding-left: 0;
+    margin-left: 0;
 }
 
 .form-group input[type="text"],
-.form-group input[type="datetime-local"],
-.form-group textarea {
-    width: calc(100% - 28px);
-    padding: 14px;
+.form-group input[type="datetime-local"] {
+    width: 100%;
+    padding: 12px;
     border: 2px solid var(--light-gray);
     border-radius: 8px;
     font-size: 1rem;
     transition: var(--transition);
-    margin: 0;
-    box-sizing: border-box;
-}
-
-input[type="datetime-local"] {
-    height: 48px;
+    margin-left: 0;
 }
 
 .form-group textarea {
-    min-height: 120px;
+    width: 100%;
+    padding: 12px;
+    border: 2px solid var(--light-gray);
+    border-radius: 8px;
+    font-size: 1rem;
+    min-height: 100px;
     resize: vertical;
-    width: calc(100% - 28px);
+    transition: var(--transition);
+    margin-left: 0;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
 }
 
 .btn-submit {
@@ -499,7 +519,7 @@ input[type="datetime-local"] {
     color: var(--medium-gray);
 }
 
-.task-entries {
+.medication-entries {
     padding: 20px;
 }
 
@@ -526,60 +546,58 @@ tr:hover {
     background-color: #f8f9fa;
 }
 
-.status-badge {
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
+.completed {
+    color: var(--success-color);
+    font-weight: 500;
 }
 
-.status-badge.completed {
-    background-color: #d4edda;
-    color: #155724;
+.pending {
+    color: var(--secondary-color);
+    font-weight: 500;
 }
 
-.status-badge.pending {
-    background-color: #fff3cd;
-    color: #856404;
-}
-
-.actions {
-    display: flex;
-    gap: 10px;
-}
-
-.action-link {
-    color: var(--primary-color);
+.complete-btn {
+    color: var(--success-color);
     text-decoration: none;
-    display: flex;
+    font-weight: 500;
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     transition: var(--transition);
-    padding: 5px 10px;
-    border-radius: 4px;
+    margin-right: 10px;
 }
 
-.action-link:hover {
-    background-color: #f0f0f0;
+.complete-btn:hover {
+    color: #219653;
+    text-decoration: underline;
+}
+
+.delete-btn {
+    color: var(--secondary-color);
     text-decoration: none;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: var(--transition);
 }
 
-.delete-link {
-    color: var(--secondary-color) !important;
+.delete-btn:hover {
+    color: #c0392b;
 }
 
-.delete-link:hover {
-    background-color: #fdecea;
-}
-
-.task-description-row {
+.med-description-row {
     background-color: #f8f9fa;
 }
 
-.description-content {
-    padding: 10px;
+.med-description-row td {
+    padding: 10px 16px;
     font-size: 0.9rem;
-    color: #555;
+    color: #666;
+}
+
+.description-content {
+    padding: 8px 0;
 }
 
 /* Modal Styles */
@@ -696,23 +714,23 @@ tr:hover {
         grid-template-columns: 1fr;
     }
     
-    .tasks-header h1 {
+    .medications-header h1 {
         font-size: 2rem;
     }
     
-    .tasks-header h2 {
+    .medications-header h2 {
         font-size: 1.3rem;
     }
 }
 
 @media (max-width: 600px) {
-    .tasks-header h1 {
+    .medications-header h1 {
         font-size: 1.8rem;
         flex-direction: column;
         gap: 5px;
     }
     
-    .tasks-header h2 {
+    .medications-header h2 {
         font-size: 1.1rem;
     }
     
@@ -721,7 +739,7 @@ tr:hover {
         padding: 15px 20px;
     }
     
-    .task-form {
+    .medication-form {
         padding: 20px;
     }
     
@@ -729,38 +747,27 @@ tr:hover {
         padding: 10px 12px;
         font-size: 0.9rem;
     }
-    
-    .status-badge {
-        padding: 4px 8px;
-        font-size: 0.8rem;
-    }
-    
-    .actions {
-        flex-direction: column;
-        gap: 5px;
-    }
-    
-    .action-link {
-        justify-content: center;
-    }
 }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Delete modal functionality
     const modal = document.getElementById('deleteModal');
-    const deleteLinks = document.querySelectorAll('.delete-link');
+    const deleteButtons = document.querySelectorAll('.delete-btn');
+    const medNameSpan = document.getElementById('medName');
     const confirmDeleteBtn = document.getElementById('confirmDelete');
     const closeModal = document.querySelector('.close-modal');
     const cancelBtn = document.querySelector('.btn-cancel');
     
-    deleteLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
             e.preventDefault();
-            const taskId = this.getAttribute('data-task-id');
+            const medId = this.getAttribute('data-med-id');
+            const medName = this.getAttribute('data-med-name');
             
-            confirmDeleteBtn.href = `tasks.php?dog_id=<?= $dogId ?>&delete=${taskId}`;
-            
+            medNameSpan.textContent = medName;
+            confirmDeleteBtn.href = `medications.php?dog_id=<?= $dogId ?>&delete_med=${medId}`;
             modal.style.display = 'block';
         });
     });
@@ -778,6 +785,20 @@ document.addEventListener('DOMContentLoaded', function() {
             modal.style.display = 'none';
         }
     });
+    
+    // Format datetime-local input to show current time as default
+    const scheduleTimeInput = document.getElementById('schedule_time');
+    if (scheduleTimeInput) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        
+        scheduleTimeInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+        scheduleTimeInput.min = `${year}-${month}-${day}T00:00`;
+    }
 });
 </script>
 

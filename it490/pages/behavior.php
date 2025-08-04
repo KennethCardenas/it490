@@ -15,29 +15,23 @@ if (!file_exists($mqClientPath)) {
 require_once $mqClientPath;
 require_once __DIR__ . '/../api/connect.php';
 
-function addTaskToDatabase($conn, $dogId, $userId, $title, $description, $dueDate) {
-    $stmt = $conn->prepare("INSERT INTO DOG_TASKS (dog_id, user_id, title, description, due_date) VALUES (?, ?, ?, ?, ?)");
-    $stmt->bind_param("iisss", $dogId, $userId, $title, $description, $dueDate);
+function addBehaviorToDatabase($conn, $dogId, $userId, $behavior, $notes) {
+    $stmt = $conn->prepare("INSERT INTO BEHAVIOR_LOGS (dog_id, user_id, behavior, notes) VALUES (?, ?, ?, ?)");
+    $stmt->bind_param("iiss", $dogId, $userId, $behavior, $notes);
     return $stmt->execute();
 }
 
-function toggleTaskInDatabase($conn, $taskId) {
-    $stmt = $conn->prepare("UPDATE DOG_TASKS SET completed = NOT completed WHERE id = ?");
-    $stmt->bind_param("i", $taskId);
-    return $stmt->execute();
-}
-
-function deleteTaskFromDatabase($conn, $taskId) {
-    $stmt = $conn->prepare("DELETE FROM DOG_TASKS WHERE id = ?");
-    $stmt->bind_param("i", $taskId);
-    return $stmt->execute();
-}
-
-function getTasksFromDatabase($conn, $dogId) {
-    $stmt = $conn->prepare("SELECT * FROM DOG_TASKS WHERE dog_id = ? ORDER BY due_date");
+function getBehaviorsFromDatabase($conn, $dogId) {
+    $stmt = $conn->prepare("SELECT * FROM BEHAVIOR_LOGS WHERE dog_id = ? ORDER BY created_at DESC");
     $stmt->bind_param("i", $dogId);
     $stmt->execute();
     return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
+
+function deleteBehaviorFromDatabase($conn, $behaviorId, $userId) {
+    $stmt = $conn->prepare("DELETE FROM BEHAVIOR_LOGS WHERE id = ? AND user_id = ?");
+    $stmt->bind_param("ii", $behaviorId, $userId);
+    return $stmt->execute();
 }
 
 $dogId = isset($_GET['dog_id']) ? (int)$_GET['dog_id'] : 0;
@@ -47,95 +41,80 @@ if ($dogId <= 0) {
 }
 
 $user = $_SESSION['user'] ?? null;
-$taskResp = [];
+$behaviorResp = [];
+$behaviorEntries = [];
 $msg = isset($_GET['msg']) ? trim($_GET['msg']) : '';
 $dog = null;
-$tasks = [];
 
-// Handle task deletion
-if (isset($_GET['delete'])) {
-    $taskId = (int)$_GET['delete'];
+// Handle behavior deletion
+if (isset($_GET['delete_behavior'])) {
+    $behaviorId = (int)$_GET['delete_behavior'];
+    
     try {
         $payload = [
-            'type' => 'delete_task',
-            'task_id' => $taskId
+            'type' => 'delete_behavior',
+            'behavior_id' => $behaviorId,
+            'user_id' => $user['id'] ?? 0
         ];
         
-        $response = @sendMessage($payload);
+        $response = sendMessage($payload);
         
-        if (empty($response) || ($response['status'] ?? '') !== 'success') {
-            if (deleteTaskFromDatabase($conn, $taskId)) {
-                $redirectMsg = urlencode('Task deleted successfully');
-            } else {
-                throw new Exception('Failed to delete task');
-            }
+        if (($response['status'] ?? '') === 'success') {
+            $redirectMsg = 'Behavior entry deleted successfully';
         } else {
-            $redirectMsg = urlencode($response['message'] ?? 'Task deleted successfully');
+            // Fallback to direct database deletion if MQ fails
+            if (deleteBehaviorFromDatabase($conn, $behaviorId, $user['id'] ?? 0)) {
+                $redirectMsg = 'Behavior entry deleted successfully';
+            } else {
+                $redirectMsg = $response['message'] ?? 'Failed to delete behavior entry';
+            }
         }
         
-        header("Location: tasks.php?dog_id={$dogId}&msg={$redirectMsg}");
+        header("Location: behavior.php?dog_id={$dogId}&msg=" . urlencode($redirectMsg));
         exit();
     } catch (Exception $e) {
-        $taskResp['message'] = 'Error: ' . $e->getMessage();
+        $behaviorResp['message'] = 'Error: ' . $e->getMessage();
     }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        $title = isset($_POST['title']) ? trim($_POST['title']) : '';
-        $description = isset($_POST['description']) ? trim($_POST['description']) : '';
-        $dueDate = isset($_POST['due_date']) ? trim($_POST['due_date']) : '';
+        $behavior = isset($_POST['behavior']) ? trim($_POST['behavior']) : '';
+        $notes = isset($_POST['notes']) ? trim($_POST['notes']) : '';
         
-        if (empty($title) || empty($dueDate)) {
-            throw new Exception('Title and due date are required');
+        if (empty($behavior)) {
+            throw new Exception('Please enter a behavior description');
         }
 
         $payload = [
-            'type' => 'add_task',
+            'type' => 'add_behavior',
             'dog_id' => $dogId,
             'user_id' => $user['id'] ?? 0,
-            'title' => $title,
-            'description' => $description,
-            'due_date' => $dueDate
+            'behavior' => $behavior,
+            'notes' => $notes
         ];
 
-        $taskResp = @sendMessage($payload);
+        $behaviorResp = @sendMessage($payload);
 
-        if (empty($taskResp) || ($taskResp['status'] ?? '') !== 'success') {
-            if (addTaskToDatabase($conn, $dogId, $user['id'] ?? 0, $title, $description, $dueDate)) {
-                $redirectMsg = urlencode('Task added successfully');
+        if (empty($behaviorResp) || ($behaviorResp['status'] ?? '') !== 'success') {
+            if (addBehaviorToDatabase($conn, $dogId, $user['id'] ?? 0, $behavior, $notes)) {
+                $redirectMsg = urlencode('Behavior entry added successfully');
             } else {
-                throw new Exception('Failed to add task');
+                throw new Exception('Failed to add behavior');
             }
         } else {
-            $redirectMsg = urlencode($taskResp['message'] ?? 'Task added successfully');
+            $redirectMsg = urlencode($behaviorResp['message'] ?? 'Behavior entry added successfully');
         }
 
-        header("Location: tasks.php?dog_id={$dogId}&msg={$redirectMsg}");
+        header("Location: behavior.php?dog_id={$dogId}&msg={$redirectMsg}");
         exit();
     } catch (Exception $e) {
-        $taskResp['message'] = 'Error: ' . $e->getMessage();
-    }
-}
-
-if (isset($_GET['toggle'])) {
-    try {
-        $taskId = (int)$_GET['toggle'];
-        if ($taskId > 0) {
-            $resp = @sendMessage(['type' => 'toggle_task', 'task_id' => $taskId]);
-            if (empty($resp) || ($resp['status'] ?? '') !== 'success') {
-                toggleTaskInDatabase($conn, $taskId);
-            }
-            header("Location: tasks.php?dog_id={$dogId}");
-            exit();
-        }
-    } catch (Exception $e) {
-        $taskResp['message'] = 'Error toggling task: ' . $e->getMessage();
+        $behaviorResp['message'] = 'Error: ' . $e->getMessage();
     }
 }
 
 if ($msg) {
-    $taskResp['message'] = urldecode($msg);
+    $behaviorResp['message'] = urldecode($msg);
 }
 
 try {
@@ -156,17 +135,17 @@ try {
 }
 
 try {
-    $resp = @sendMessage(['type' => 'get_tasks', 'dog_id' => $dogId]);
+    $resp = @sendMessage(['type' => 'get_behaviors', 'dog_id' => $dogId]);
     if (($resp['status'] ?? '') === 'success') {
-        $tasks = $resp['tasks'] ?? [];
+        $behaviorEntries = $resp['behaviors'] ?? [];
     } else {
-        $tasks = getTasksFromDatabase($conn, $dogId);
+        $behaviorEntries = getBehaviorsFromDatabase($conn, $dogId);
     }
 } catch (Exception $e) {
-    $tasks = getTasksFromDatabase($conn, $dogId);
+    $behaviorEntries = getBehaviorsFromDatabase($conn, $dogId);
 }
 
-$title = "Tasks" . ($dog ? " - " . htmlspecialchars($dog['name']) : "");
+$title = "Behavior Tracking" . ($dog ? " - " . htmlspecialchars($dog['name']) : "");
 
 $headerPath = __DIR__ . '/../header.php';
 if (file_exists($headerPath)) {
@@ -176,27 +155,27 @@ if (file_exists($headerPath)) {
 }
 ?>
 
-<!-- Delete Confirmation Modal -->
-<div id="deleteModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Confirm Deletion</h3>
-            <span class="close-modal">&times;</span>
-        </div>
-        <div class="modal-body">
-            <p>Are you sure you want to delete this task? This action cannot be undone.</p>
-        </div>
-        <div class="modal-footer">
-            <button class="btn-cancel">Cancel</button>
-            <a id="confirmDelete" class="btn-delete">Delete Permanently</a>
+<div class="behavior-app">
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Confirm Deletion</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this behavior entry? This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel">Cancel</button>
+                <a id="confirmDelete" class="btn-delete">Delete Permanently</a>
+            </div>
         </div>
     </div>
-</div>
 
-<div class="tasks-app">
-    <div class="tasks-header">
+    <div class="behavior-header">
         <div class="header-content">
-            <h1><i class="fas fa-tasks tasks-icon"></i> Task Management</h1>
+            <h1><i class="fas fa-brain behavior-icon"></i> Behavior Tracker</h1>
             <?php if ($dog): ?>
                 <h2>For <?= htmlspecialchars($dog['name']) ?> <i class="fas fa-paw paw-icon"></i></h2>
             <?php endif; ?>
@@ -204,85 +183,71 @@ if (file_exists($headerPath)) {
     </div>
 
     <div class="main-container">
-        <?php if (!empty($taskResp['message'])): ?>
-            <div class="alert <?= strpos($taskResp['message'], 'Error') !== false ? 'alert-error' : 'alert-success' ?>">
-                <i class="fas <?= strpos($taskResp['message'], 'Error') !== false ? 'fa-exclamation-circle' : 'fa-check-circle' ?>"></i>
-                <?= htmlspecialchars($taskResp['message']) ?>
+        <?php if (!empty($behaviorResp['message'])): ?>
+            <div class="alert <?= strpos($behaviorResp['message'], 'Error') !== false ? 'alert-error' : 'alert-success' ?>">
+                <i class="fas <?= strpos($behaviorResp['message'], 'Error') !== false ? 'fa-exclamation-circle' : 'fa-check-circle' ?>"></i>
+                <?= htmlspecialchars($behaviorResp['message']) ?>
             </div>
         <?php endif; ?>
 
         <div class="content-grid">
             <div class="form-card">
                 <div class="card-header">
-                    <i class="fas fa-plus-circle"></i> Add New Task
+                    <i class="fas fa-plus-circle"></i> Add Behavior Entry
                 </div>
-                <form method="POST" class="task-form">
-                    <div class="form-group">
-                        <label for="title"><i class="fas fa-heading"></i> Title</label>
-                        <input type="text" id="title" name="title" required placeholder="Enter task title">
-                    </div>
-                    <div class="form-group">
-                        <label for="due_date"><i class="fas fa-calendar-day"></i> Due Date</label>
-                        <input type="datetime-local" id="due_date" name="due_date" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="description"><i class="fas fa-align-left"></i> Description</label>
-                        <textarea id="description" name="description" placeholder="Enter task description"></textarea>
+                <form method="POST" class="behavior-form">
+                    <div class="form-fields-container">
+                        <div class="form-field-group">
+                            <label for="behavior">
+                                <i class="fas fa-comment-alt"></i> Behavior Description
+                            </label>
+                            <input type="text" id="behavior" name="behavior" required placeholder="Describe the behavior">
+                        </div>
+                        <div class="form-field-group">
+                            <label for="notes">
+                                <i class="fas fa-comment-dots"></i> Notes
+                            </label>
+                            <textarea id="notes" name="notes" placeholder="Any additional notes about this behavior"></textarea>
+                        </div>
                     </div>
                     <button type="submit" class="btn-submit">
-                        <i class="fas fa-save"></i> Add Task
+                        <i class="fas fa-save"></i> Record Behavior
                     </button>
                 </form>
             </div>
 
             <div class="history-card">
                 <div class="card-header">
-                    <i class="fas fa-tasks"></i> Current Tasks
+                    <i class="fas fa-history"></i> Behavior History
                 </div>
-                <?php if (empty($tasks)): ?>
+                <?php if (empty($behaviorEntries)): ?>
                     <div class="empty-state">
-                        <i class="fas fa-clipboard-list"></i>
-                        <p>No tasks found</p>
+                        <i class="fas fa-brain"></i>
+                        <p>No behavior entries recorded yet</p>
                     </div>
                 <?php else: ?>
-                    <div class="task-entries">
+                    <div class="behavior-entries">
                         <table>
                             <thead>
                                 <tr>
-                                    <th><i class="fas fa-heading"></i> Title</th>
-                                    <th><i class="fas fa-calendar-day"></i> Due Date</th>
-                                    <th><i class="fas fa-check-circle"></i> Status</th>
+                                    <th><i class="fas fa-comment-alt"></i> Behavior</th>
+                                    <th><i class="fas fa-comment"></i> Notes</th>
+                                    <th><i class="fas fa-clock"></i> Time</th>
                                     <th><i class="fas fa-cog"></i> Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($tasks as $task): ?>
+                                <?php foreach ($behaviorEntries as $entry): ?>
                                     <tr>
-                                        <td><?= htmlspecialchars($task['title'] ?? '') ?></td>
-                                        <td><?= isset($task['due_date']) ? date('M j, g:i a', strtotime($task['due_date'])) : '' ?></td>
+                                        <td><?= htmlspecialchars($entry['behavior'] ?? '') ?></td>
+                                        <td><?= !empty($entry['notes']) ? htmlspecialchars($entry['notes']) : '<span class="no-notes">No notes</span>' ?></td>
+                                        <td><?= isset($entry['created_at']) ? date('M j, g:i a', strtotime($entry['created_at'])) : '' ?></td>
                                         <td>
-                                            <span class="status-badge <?= $task['completed'] ? 'completed' : 'pending' ?>">
-                                                <?= $task['completed'] ? 'Completed' : 'Pending' ?>
-                                            </span>
-                                        </td>
-                                        <td class="actions">
-                                            <a href="?dog_id=<?= $dogId ?>&toggle=<?= $task['id'] ?>" class="action-link" title="<?= $task['completed'] ? 'Reopen' : 'Complete' ?>">
-                                                <i class="fas <?= $task['completed'] ? 'fa-undo' : 'fa-check' ?>"></i>
-                                            </a>
-                                            <a href="#" class="action-link delete-link" title="Delete" data-task-id="<?= $task['id'] ?>">
+                                            <a href="#" class="delete-link" data-behavior-id="<?= $entry['id'] ?>" title="Delete">
                                                 <i class="fas fa-trash-alt"></i>
                                             </a>
                                         </td>
                                     </tr>
-                                    <?php if (!empty($task['description'])): ?>
-                                        <tr class="task-description-row">
-                                            <td colspan="4">
-                                                <div class="description-content">
-                                                    <strong>Description:</strong> <?= htmlspecialchars($task['description']) ?>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    <?php endif; ?>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
@@ -321,13 +286,13 @@ body {
     background-color: #f5f7fa;
 }
 
-.tasks-app {
+.behavior-app {
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
 }
 
-.tasks-header {
+.behavior-header {
     text-align: center;
     margin-bottom: 30px;
     padding: 20px 0;
@@ -338,7 +303,7 @@ body {
     margin: 0 auto;
 }
 
-.tasks-header h1 {
+.behavior-header h1 {
     font-size: 2.5rem;
     color: var(--primary-color);
     margin-bottom: 10px;
@@ -348,7 +313,7 @@ body {
     gap: 15px;
 }
 
-.tasks-header h2 {
+.behavior-header h2 {
     font-size: 1.5rem;
     color: var(--text-color);
     font-weight: 400;
@@ -358,8 +323,8 @@ body {
     gap: 10px;
 }
 
-.tasks-icon {
-    color: var(--primary-color);
+.behavior-icon {
+    color: #8e44ad;
 }
 
 .paw-icon {
@@ -409,7 +374,7 @@ body {
 }
 
 .card-header {
-    background: linear-gradient(135deg, var(--primary-color), #2980b9);
+    background: linear-gradient(135deg, #8e44ad, #9b59b6);
     color: var(--white);
     padding: 18px 25px;
     font-size: 1.2rem;
@@ -418,28 +383,42 @@ body {
     gap: 12px;
 }
 
-.task-form {
+.behavior-form {
     padding: 25px;
 }
 
-.form-group {
-    margin-bottom: 25px;
+.form-fields-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-field-group {
+    display: flex;
+    flex-direction: column;
     width: 100%;
 }
 
-.form-group label {
-    display: block;
-    margin-bottom: 10px;
+.form-field-group label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     font-weight: 600;
+    margin-bottom: 8px;
     color: var(--text-color);
     font-size: 1rem;
 }
 
-.form-group input[type="text"],
-.form-group input[type="datetime-local"],
-.form-group textarea {
-    width: calc(100% - 28px);
-    padding: 14px;
+.form-field-group label i {
+    min-width: 20px;
+    text-align: center;
+}
+
+.form-field-group input[type="text"],
+.form-field-group textarea {
+    width: 100%;
+    padding: 12px 14px;
     border: 2px solid var(--light-gray);
     border-radius: 8px;
     font-size: 1rem;
@@ -448,20 +427,22 @@ body {
     box-sizing: border-box;
 }
 
-input[type="datetime-local"] {
-    height: 48px;
+.form-field-group input[type="text"]:focus,
+.form-field-group textarea:focus {
+    outline: none;
+    border-color: #8e44ad;
+    box-shadow: 0 0 0 3px rgba(142, 68, 173, 0.2);
 }
 
-.form-group textarea {
+.form-field-group textarea {
     min-height: 120px;
     resize: vertical;
-    width: calc(100% - 28px);
 }
 
 .btn-submit {
     width: 100%;
     padding: 14px;
-    background: linear-gradient(135deg, var(--success-color), #27ae60);
+    background: linear-gradient(135deg, #8e44ad, #9b59b6);
     color: var(--white);
     border: none;
     border-radius: 8px;
@@ -476,9 +457,9 @@ input[type="datetime-local"] {
 }
 
 .btn-submit:hover {
-    background: linear-gradient(135deg, #27ae60, #219653);
+    background: linear-gradient(135deg, #7d3c98, #8e44ad);
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(46, 204, 113, 0.3);
+    box-shadow: 0 4px 8px rgba(142, 68, 173, 0.3);
 }
 
 .empty-state {
@@ -499,7 +480,7 @@ input[type="datetime-local"] {
     color: var(--medium-gray);
 }
 
-.task-entries {
+.behavior-entries {
     padding: 20px;
 }
 
@@ -526,60 +507,18 @@ tr:hover {
     background-color: #f8f9fa;
 }
 
-.status-badge {
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
-}
-
-.status-badge.completed {
-    background-color: #d4edda;
-    color: #155724;
-}
-
-.status-badge.pending {
-    background-color: #fff3cd;
-    color: #856404;
-}
-
-.actions {
-    display: flex;
-    gap: 10px;
-}
-
-.action-link {
-    color: var(--primary-color);
-    text-decoration: none;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: var(--transition);
-    padding: 5px 10px;
-    border-radius: 4px;
-}
-
-.action-link:hover {
-    background-color: #f0f0f0;
-    text-decoration: none;
+.no-notes {
+    color: var(--medium-gray);
+    font-style: italic;
 }
 
 .delete-link {
-    color: var(--secondary-color) !important;
+    color: var(--secondary-color);
+    transition: color 0.3s ease;
 }
 
 .delete-link:hover {
-    background-color: #fdecea;
-}
-
-.task-description-row {
-    background-color: #f8f9fa;
-}
-
-.description-content {
-    padding: 10px;
-    font-size: 0.9rem;
-    color: #555;
+    color: #c0392b;
 }
 
 /* Modal Styles */
@@ -696,23 +635,23 @@ tr:hover {
         grid-template-columns: 1fr;
     }
     
-    .tasks-header h1 {
+    .behavior-header h1 {
         font-size: 2rem;
     }
     
-    .tasks-header h2 {
+    .behavior-header h2 {
         font-size: 1.3rem;
     }
 }
 
 @media (max-width: 600px) {
-    .tasks-header h1 {
+    .behavior-header h1 {
         font-size: 1.8rem;
         flex-direction: column;
         gap: 5px;
     }
     
-    .tasks-header h2 {
+    .behavior-header h2 {
         font-size: 1.1rem;
     }
     
@@ -721,27 +660,13 @@ tr:hover {
         padding: 15px 20px;
     }
     
-    .task-form {
+    .behavior-form {
         padding: 20px;
     }
     
-    th, td {
-        padding: 10px 12px;
-        font-size: 0.9rem;
-    }
-    
-    .status-badge {
-        padding: 4px 8px;
-        font-size: 0.8rem;
-    }
-    
-    .actions {
-        flex-direction: column;
-        gap: 5px;
-    }
-    
-    .action-link {
-        justify-content: center;
+    .modal-content {
+        margin: 20% auto;
+        width: 95%;
     }
 }
 </style>
@@ -757,9 +682,9 @@ document.addEventListener('DOMContentLoaded', function() {
     deleteLinks.forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
-            const taskId = this.getAttribute('data-task-id');
+            const behaviorId = this.getAttribute('data-behavior-id');
             
-            confirmDeleteBtn.href = `tasks.php?dog_id=<?= $dogId ?>&delete=${taskId}`;
+            confirmDeleteBtn.href = `behavior.php?dog_id=<?= $dogId ?>&delete_behavior=${behaviorId}`;
             
             modal.style.display = 'block';
         });

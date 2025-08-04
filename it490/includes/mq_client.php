@@ -10,6 +10,9 @@ function sendMessage(array $payload): array {
         throw new InvalidArgumentException('Payload must contain a type');
     }
 
+    $payload['type'] = strtolower(trim($payload['type']));
+
+
     switch ($payload['type']) {
         case 'login':
             if (empty($payload['username']) || empty($payload['password'])) {
@@ -53,6 +56,12 @@ function sendMessage(array $payload): array {
             }
             break;
 
+        case 'get_dog':
+            if (empty($payload['dog_id'])) {
+                throw new InvalidArgumentException('dog_id is required');
+            }
+            break;
+
         case 'add_task':
             foreach (['dog_id','user_id','title','due_date'] as $f) {
                 if (empty($payload[$f])) {
@@ -85,13 +94,133 @@ function sendMessage(array $payload): array {
                 }
                 break;
                 
-            case 'add_water':
-                foreach (['dog_id','user_id','amount'] as $f) {
+        case 'add_water':
+            foreach (['dog_id','user_id','amount'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
+                }
+            }
+            break;
+
+        case 'add_care_log':
+            foreach (['dog_id','user_id','note'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
+                }
+            }
+            break;
+
+        case 'get_care_logs':
+            if (empty($payload['dog_id'])) {
+                throw new InvalidArgumentException('dog_id is required');
+            }
+            break;
+
+        case 'schedule_medication':
+            foreach (['dog_id','user_id','medication','schedule_time'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
+                }
+            }
+            break;
+
+        case 'complete_medication':
+            if (empty($payload['med_id'])) {
+                throw new InvalidArgumentException('med_id is required');
+            }
+            break;
+
+        case 'get_medications':
+            if (empty($payload['dog_id'])) {
+                throw new InvalidArgumentException('dog_id is required');
+            }
+            break;
+
+        case 'add_behavior':
+            foreach (['dog_id','user_id','behavior'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
+                }
+            }
+            break;
+
+        case 'get_behaviors':
+            if (empty($payload['dog_id'])) {
+                throw new InvalidArgumentException('dog_id is required');
+            }
+            break;
+
+        case 'get_points':
+            if (empty($payload['user_id'])) {
+                throw new InvalidArgumentException('user_id is required');
+            }
+            break;
+
+        case 'get_achievements':
+            if (empty($payload['user_id'])) {
+                throw new InvalidArgumentException('user_id is required');
+            }
+            break;
+
+            case 'add_meal':
+                foreach (['dog_id','user_id','meal_type','amount'] as $f) {
                     if (empty($payload[$f])) {
                         throw new InvalidArgumentException("$f is required");
                     }
                 }
                 break;
+            
+            case 'get_meals':
+                if (empty($payload['dog_id'])) {
+                    throw new InvalidArgumentException('dog_id is required');
+                }
+                break;
+
+                case 'delete_dog':
+                    foreach (['dog_id', 'user_id'] as $f) {
+                        if (empty($payload[$f])) {
+                            throw new InvalidArgumentException("$f is required");
+                        }
+                    }
+                    break;
+
+                    case 'delete_meal':
+                        if (empty($payload['meal_id'])) {
+                            throw new InvalidArgumentException('meal_id is required');
+                        }
+                        break;
+            case 'delete_water':
+                if (empty($payload['water_id'])) {
+                    throw new InvalidArgumentException('water_id is required');
+                }
+                break;
+
+            case 'delete_task':
+                if (empty($payload['task_id'])) {
+                    throw new InvalidArgumentException('task_id is required');
+                }
+                break;
+            case 'delete_medication':
+                foreach (['med_id', 'user_id'] as $f) {
+                    if (empty($payload[$f])) {
+                        throw new InvalidArgumentException("$f is required");
+                    }
+                }
+                break;
+            case 'delete_care_log':
+                foreach (['log_id', 'user_id'] as $f) {
+                    if (empty($payload[$f])) {
+                        throw new InvalidArgumentException("$f is required");
+                    }
+                }
+                break;
+                case 'delete_behavior':
+                    foreach (['behavior_id', 'user_id'] as $f) {
+                        if (empty($payload[$f])) {
+                            throw new InvalidArgumentException("$f is required");
+                        }
+                    }
+                    break;
 
         default:
             throw new InvalidArgumentException("Unsupported message type: {$payload['type']}");
