@@ -437,18 +437,54 @@ $callback = function ($msg) use ($channel, $conn) {
     		        $payload['play_style'],
     		        $payload['gender_pref']
     		    );
-    		    if ($stmt->execute()) {
-    		        $response = ['status' => 'success', 'message' => 'Playdate created'];
-    		        echo " [+] Playdate created for user {$payload['user_id']}\n";
-    		    } else {
-    		        $response = ['status' => 'error', 'message' => 'Failed to create playdate: ' . $conn->error];
-    		        echo " [-] Playdate creation failed\n";
-    		    }
-    		    break;
+                    if ($stmt->execute()) {
+                        $response = ['status' => 'success', 'message' => 'Playdate created'];
+                        echo " [+] Playdate created for user {$payload['user_id']}\n";
+                    } else {
+                        $response = ['status' => 'error', 'message' => 'Failed to create playdate: ' . $conn->error];
+                        echo " [-] Playdate creation failed\n";
+                    }
+                    break;
+
+            case 'playdate_invites_create':
+                $stmt = $conn->prepare("INSERT INTO PLAYDATE_INVITES (inviter_id, invitee_id, playdate_id, message) VALUES (?,?,?,?)");
+                $stmt->bind_param('iiis', $payload['user_id'], $payload['invitee_id'], $payload['playdate_id'], $payload['message']);
+                if ($stmt->execute()) {
+                    $response = ['status' => 'success', 'message' => 'Invitation sent'];
+                    echo " [+] Playdate invite from {$payload['user_id']} to {$payload['invitee_id']}\\n";
+                } else {
+                    $response = ['status' => 'error', 'message' => 'Failed to send invite: ' . $conn->error];
+                    echo " [-] Playdate invite failed\\n";
+                }
+                break;
+
+            case 'playdate_invites_list':
+                $stmt = $conn->prepare("SELECT pi.id, pi.playdate_id, pi.inviter_id, pi.message, pi.status, p.title FROM PLAYDATE_INVITES pi JOIN PLAYDATES p ON pi.playdate_id = p.id WHERE pi.invitee_id = ? ORDER BY pi.created_at DESC");
+                $stmt->bind_param('i', $payload['user_id']);
+                if ($stmt->execute()) {
+                    $response = ['status' => 'success', 'invites' => $stmt->get_result()->fetch_all(MYSQLI_ASSOC)];
+                    echo " [x] Playdate invites listed for user {$payload['user_id']}\\n";
+                } else {
+                    $response = ['status' => 'error', 'message' => 'Failed to fetch invites: ' . $conn->error];
+                    echo " [-] Playdate invites list failed\\n";
+                }
+                break;
+
+            case 'playdate_invites_update':
+                $stmt = $conn->prepare("UPDATE PLAYDATE_INVITES SET status = ?, responded_at = NOW() WHERE id = ?");
+                $stmt->bind_param('si', $payload['status'], $payload['id']);
+                if ($stmt->execute()) {
+                    $response = ['status' => 'success', 'message' => 'Invitation updated'];
+                    echo " [+] Playdate invite {$payload['id']} updated to {$payload['status']}\\n";
+                } else {
+                    $response = ['status' => 'error', 'message' => 'Failed to update invite: ' . $conn->error];
+                    echo " [-] Playdate invite update failed\\n";
+                }
+                break;
 
             case 'playdate_request':
                 $stmt = $conn->prepare("INSERT INTO PLAYDATE_REQUESTS (requester_id, target_owner_id, dog_size_match, location_preference, custom_message) VALUES (?, ?, ?, ?, ?)");
-                $stmt->bind_param("iisss", 
+                $stmt->bind_param("iisss",
                     $payload['user_id'],
                     $payload['target_owner_id'],
                     $payload['dog_size_match'],

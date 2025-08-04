@@ -154,6 +154,29 @@ function sendMessage(array $payload): array {
             }
             break;
 
+        case 'playdate_invites_create':
+            foreach (['user_id','playdate_id','invitee_id'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
+                }
+            }
+            $payload['message'] = $payload['message'] ?? '';
+            break;
+
+        case 'playdate_invites_list':
+            if (empty($payload['user_id'])) {
+                throw new InvalidArgumentException('user_id is required');
+            }
+            break;
+
+        case 'playdate_invites_update':
+            foreach (['id','status'] as $f) {
+                if (empty($payload[$f])) {
+                    throw new InvalidArgumentException("$f is required");
+                }
+            }
+            break;
+
         case 'lost_dogs_create':
             foreach (['user_id','dog_id','dog_name','last_lat','last_lng','alert_radius'] as $f) {
                 if (!isset($payload[$f]) || $payload[$f] === '') {

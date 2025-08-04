@@ -20,40 +20,56 @@ $playdates = $resp['playdates'] ?? [];
 
 $message = '';
 
-// handle create submission
+// handle submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
     try {
-        $scheduled = $_POST['scheduled_at'] ?? '';
-        if ($scheduled) {
-            $scheduled = str_replace('T', ' ', $scheduled);
-        }
+        if ($action === 'create_playdate') {
+            $scheduled = $_POST['scheduled_at'] ?? '';
+            if ($scheduled) {
+                $scheduled = str_replace('T', ' ', $scheduled);
+            }
 
-        $resp = sendMessage([
-            'type' => 'playdates_create',
-            'user_id' => $user['id'],
-            'title' => $_POST['title'] ?? '',
-            'description' => $_POST['description'] ?? '',
-            'scheduled_at' => $scheduled,
-            'location' => $_POST['location'] ?? '',
-            'age_range' => $_POST['age_range'] ?? '',
-            'size' => $_POST['size'] ?? '',
-            'energy_level' => $_POST['energy_level'] ?? '',
-            'temperament' => $_POST['temperament'] ?? '',
-            'play_style' => $_POST['play_style'] ?? '',
-            'gender_pref' => $_POST['gender_pref'] ?? '',
-        ]);
-        
-        // Redirect to prevent resubmission
-        if ($resp['status'] === 'success') {
-            header('Location: /it490/pages/playdates.php?success=1');
-            exit();
-        } else {
-            $message = $resp['message'] ?? 'Failed to create playdate';
+            $resp = sendMessage([
+                'type' => 'playdates_create',
+                'user_id' => $user['id'],
+                'title' => $_POST['title'] ?? '',
+                'description' => $_POST['description'] ?? '',
+                'scheduled_at' => $scheduled,
+                'location' => $_POST['location'] ?? '',
+                'age_range' => $_POST['age_range'] ?? '',
+                'size' => $_POST['size'] ?? '',
+                'energy_level' => $_POST['energy_level'] ?? '',
+                'temperament' => $_POST['temperament'] ?? '',
+                'play_style' => $_POST['play_style'] ?? '',
+                'gender_pref' => $_POST['gender_pref'] ?? '',
+            ]);
+
+            // Redirect to prevent resubmission
+            if ($resp['status'] === 'success') {
+                header('Location: /it490/pages/playdates.php?success=1');
+                exit();
+            } else {
+                $message = $resp['message'] ?? 'Failed to create playdate';
+            }
+        } elseif ($action === 'create_invite') {
+            $resp = sendMessage([
+                'type' => 'playdate_invites_create',
+                'user_id' => $user['id'],
+                'playdate_id' => (int)($_POST['playdate_id'] ?? 0),
+                'invitee_id' => (int)($_POST['invitee_id'] ?? 0),
+                'message' => $_POST['message'] ?? ''
+            ]);
+            $message = $resp['message'] ?? '';
         }
     } catch (Exception $e) {
         $message = "An error occurred: " . $e->getMessage();
     }
 }
+
+// fetch invites for current user
+$invResp = sendMessage(['type' => 'playdate_invites_list', 'user_id' => $user['id']]);
+$invites = $invResp['invites'] ?? [];
 
 $title = 'Playdates';
 include_once __DIR__ . '/../header.php';
@@ -81,6 +97,7 @@ include_once __DIR__ . '/../header.php';
 
   <h2>Create New Playdate</h2>
   <form method="POST" class="form">
+    <input type="hidden" name="action" value="create_playdate">
     <input name="title" placeholder="Title" class="input" required>
     <input name="scheduled_at" type="datetime-local" class="input" required>
     <input name="location" placeholder="Location" class="input" required>
@@ -108,8 +125,48 @@ include_once __DIR__ . '/../header.php';
         <input name="custom_message" placeholder="Message" class="input">
         <button type="submit" class="btn small">Request</button>
       </form>
+      <form method="POST" class="form-inline" style="margin-top:5px;">
+        <input type="hidden" name="action" value="create_invite">
+        <input type="hidden" name="playdate_id" value="<?= htmlspecialchars($p['id']) ?>">
+        <input name="invitee_id" placeholder="Invite User ID" required class="input">
+        <input name="message" placeholder="Message" class="input">
+        <button type="submit" class="btn small">Invite</button>
+      </form>
     </li>
     <?php endforeach; ?>
   </ul>
-</div>
-<?php include_once __DIR__ . '/../footer.php'; ?>
+  
+  <h2>Your Playdate Invitations</h2>
+  <?php if (empty($invites)): ?>
+    <p>No invitations at this time.</p>
+  <?php else: ?>
+  <table class="table">
+    <thead>
+      <tr><th>Playdate</th><th>From</th><th>Message</th><th>Status</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      <?php foreach ($invites as $i): ?>
+      <tr>
+        <td><?= htmlspecialchars($i['title']) ?></td>
+        <td><?= htmlspecialchars($i['inviter_id']) ?></td>
+        <td><?= htmlspecialchars($i['message']) ?></td>
+        <td><?= htmlspecialchars($i['status']) ?></td>
+        <td>
+          <?php if ($i['status'] === 'pending'): ?>
+          <form method="POST" action="../send_user_request.php?type=playdate_invites_update" class="form-inline">
+            <input type="hidden" name="id" value="<?= htmlspecialchars($i['id']) ?>">
+            <button name="status" value="accepted" class="btn small">Accept</button>
+            <button name="status" value="declined" class="btn small">Decline</button>
+          </form>
+          <?php else: ?>
+          --
+          <?php endif; ?>
+        </td>
+      </tr>
+      <?php endforeach; ?>
+    </tbody>
+  </table>
+  <?php endif; ?>
+
+  </div>
+  <?php include_once __DIR__ . '/../footer.php'; ?>
