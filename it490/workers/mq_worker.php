@@ -293,10 +293,10 @@ $callback = function ($msg) use ($channel, $conn) {
                     );
                     if ($stmt->execute()) {
                         $response = ['status' => 'success', 'message' => 'Invite created', 'code' => $code, 'id' => $stmt->insert_id];
-                        echo "Invite created for dog {$payload['dog_id']}\n";
+                        echo " [+] Invite created for dog {$payload['dog_id']}\n";
                     } else {
                         $response['message'] = 'Failed to create invite: ' . $conn->error;
-                        echo "Invite creation failed\n";
+                        echo " [-] Invite creation failed\n";
                     }
                     break;
 
@@ -305,8 +305,10 @@ $callback = function ($msg) use ($channel, $conn) {
                     $stmt->bind_param('i', $payload['user_id']);
                     if ($stmt->execute()) {
                         $response = ['status' => 'success', 'invites' => $stmt->get_result()->fetch_all(MYSQLI_ASSOC)];
+                        echo " [x] Invite list fetched for user {$payload['user_id']}\n";
                     } else {
                         $response['message'] = 'Failed to fetch invites: ' . $conn->error;
+                        echo " [-] Invite list fetch failed\n";
                     }
                     break;
 
@@ -330,10 +332,10 @@ $callback = function ($msg) use ($channel, $conn) {
                     }
                     if ($stmt->execute()) {
                         $response = ['status' => 'success', 'message' => 'Invite updated'];
-                        echo "Invite updated to {$payload['status']}\n";
+                        echo " [+] Invite updated to {$payload['status']}\n";
                     } else {
                         $response['message'] = 'Failed to update invite: ' . $conn->error;
-                        echo "Invite update failed\n";
+                        echo " [-] Invite update failed\n";
                     }
                     break;
 
@@ -354,33 +356,34 @@ $callback = function ($msg) use ($channel, $conn) {
              	    	$payload['photo_url'],
             	    	$payload['user_id']
         	    );
-        	    if ($stmt->execute()){
-        	        $response = ['status'=>'success','message'=>'Lost dog reported'];
-			echo "Lost dog post added for {$payload['dog_id']}\n";
-		    } else {
-			$response['message'] = 'Failed to post lost dog report: ' . $conn->error;
-			echo "Report failed to post\n";
-		    }
-        	    break;
+                    if ($stmt->execute()){
+                        $response = ['status'=>'success','message'=>'Lost dog reported'];
+                        echo " [+] Lost dog post added for {$payload['dog_id']}\n";
+                    } else {
+                        $response['message'] = 'Failed to post lost dog report: ' . $conn->error;
+                        echo " [-] Lost dog report failed\n";
+                    }
+                    break;
 
-    		case 'lost_dogs_list':
-        	    $res = $conn->query("SELECT * FROM lost_dogs ORDER BY reported_at DESC");
-        	    $response = ['status'=>'success','alerts'=>$res->fetch_all(MYSQLI_ASSOC)];
-        	    break;
+                case 'lost_dogs_list':
+                    $res = $conn->query("SELECT * FROM lost_dogs ORDER BY reported_at DESC");
+                    $response = ['status'=>'success','alerts'=>$res->fetch_all(MYSQLI_ASSOC)];
+                    echo " [x] Lost dog alerts listed\n";
+                    break;
 
     		case 'lost_dogs_update':
         	    $stmt = $conn->prepare(
             		"UPDATE lost_dogs SET status = ? WHERE id = ?"
         	    );
         	    $stmt->bind_param('si',$payload['status'],$payload['id']);
-        	    if ($stmt->execute()){
-        	        $response = ['status'=>'success','message'=>'Alert updated'];
-			echo "Alert updated for {$payload['id']} to {$payload['status']}\n";
-		    } else {
-			$response['message'] = 'Status not updated: ' . $conn->error;
-			echo "Lost status not updated\n";
-        	    }
-        	    break;
+                    if ($stmt->execute()){
+                        $response = ['status'=>'success','message'=>'Alert updated'];
+                        echo " [+] Alert updated for {$payload['id']} to {$payload['status']}\n";
+                    } else {
+                        $response['message'] = 'Status not updated: ' . $conn->error;
+                        echo " [-] Lost status not updated\n";
+                    }
+                    break;
 
 		case 'playdates_list':
     		   $allowed = ['age_range','size','energy_level','temperament','play_style','gender_pref','location'];
@@ -410,14 +413,14 @@ $callback = function ($msg) use ($channel, $conn) {
     		   if ($clauses) {
         	   $stmt->bind_param($types, ...$params);
     		   }
-    		   if ($stmt->execute()){
-    		       $response = ['status'=>'success', 'playdates'=>$stmt->get_result()->fetch_all(MYSQLI_ASSOC)];
-		       echo "Playdate list displayed\n";
-		   } else {
-		       $response['message'] = 'List did not fetch: ' . $conn->error;
-		       echo "Playdates were not filtered\n";
-    		   }
-    		   break;
+                   if ($stmt->execute()){
+                       $response = ['status'=>'success', 'playdates'=>$stmt->get_result()->fetch_all(MYSQLI_ASSOC)];
+                       echo " [x] Playdate list displayed\n";
+                   } else {
+                       $response['message'] = 'List did not fetch: ' . $conn->error;
+                       echo " [-] Playdate list fetch failed\n";
+                   }
+                   break;
 
 		case 'playdates_create':
     		    $stmt = $conn->prepare("INSERT INTO PLAYDATES (created_by, title, description, scheduled_at, location, age_range, size, energy_level, temperament, play_style, gender_pref) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -466,8 +469,10 @@ $callback = function ($msg) use ($channel, $conn) {
                 $stmt->bind_param("i", $payload['user_id']);
                 if ($stmt->execute()) {
                     $response = ['status' => 'success', 'requests' => $stmt->get_result()->fetch_all(MYSQLI_ASSOC)];
+                    echo " [x] Playdate requests listed for user {$payload['user_id']}\n";
                 } else {
                     $response = ['status' => 'error', 'message' => 'Failed to fetch requests: ' . $conn->error];
+                    echo " [-] Playdate request list failed\n";
                 }
                 break;
 

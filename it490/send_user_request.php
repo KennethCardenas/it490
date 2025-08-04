@@ -37,6 +37,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['message'] = $resp['message'] ?? 'Failed to update request';
         }
         $redirect = '/pages/playdate_request.php';
+    } elseif ($type === 'lost_dogs_update') {
+        $resp = sendMessage([
+            'type' => 'lost_dogs_update',
+            'id' => $_POST['id'],
+            'status' => $_POST['status']
+        ]);
+
+        if ($resp['status'] === 'success') {
+            $_SESSION['message'] = 'Lost dog status updated.';
+        } else {
+            $_SESSION['message'] = $resp['message'] ?? 'Failed to update status';
+        }
+        $redirect = '/pages/lost_dogs.php';
     }
 
     header("Location: {$redirect}");
