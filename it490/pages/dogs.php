@@ -81,7 +81,7 @@ $stmt->close();
 // Get available breeds for the form
 $availableBreeds = DogAPI::getBreedNames();
 
-<?php
+
 $title = "My Dogs";
 $pageCss = '/it490/styles/dogs.css';
 include_once __DIR__ . '/../header.php';
