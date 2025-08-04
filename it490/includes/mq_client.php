@@ -132,7 +132,7 @@ function sendMessage(array $payload): array {
             break;
 
         case 'playdate_request':
-            foreach (['user_id','target_owner_id','location_preference'] as $f) {
+            foreach (['user_id','playdate_id','location_preference'] as $f) {
                 if (empty($payload[$f])) {
                     throw new InvalidArgumentException("$f is required");
                 }

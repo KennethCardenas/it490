@@ -384,10 +384,13 @@ $callback = function ($msg) use ($channel, $conn) {
     		    break;
 
             case 'playdate_request':
-                $stmt = $conn->prepare("INSERT INTO PLAYDATE_REQUESTS (requester_id, target_owner_id, dog_size_match, location_preference, custom_message) VALUES (?, ?, ?, ?, ?)");
-                $stmt->bind_param("iisss", 
+                $stmt = $conn->prepare(
+                    "INSERT INTO PLAYDATE_REQUESTS (playdate_id, requester_id, dog_size_match, location_preference, custom_message) VALUES (?, ?, ?, ?, ?)"
+                );
+                $stmt->bind_param(
+                    "iisss",
+                    $payload['playdate_id'],
                     $payload['user_id'],
-                    $payload['target_owner_id'],
                     $payload['dog_size_match'],
                     $payload['location_preference'],
                     $payload['custom_message']
@@ -402,7 +405,9 @@ $callback = function ($msg) use ($channel, $conn) {
                 break;
 
             case 'playdate_requests_list':
-                $stmt = $conn->prepare("SELECT * FROM PLAYDATE_REQUESTS WHERE target_owner_id = ? ORDER BY id DESC");
+                $stmt = $conn->prepare(
+                    "SELECT pr.* FROM PLAYDATE_REQUESTS pr JOIN PLAYDATES p ON pr.playdate_id = p.id WHERE p.created_by = ? ORDER BY pr.id DESC"
+                );
                 $stmt->bind_param("i", $payload['user_id']);
                 if ($stmt->execute()) {
                     $response = ['status' => 'success', 'requests' => $stmt->get_result()->fetch_all(MYSQLI_ASSOC)];
