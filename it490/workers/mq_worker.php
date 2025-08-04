@@ -41,6 +41,20 @@ function checkDuplicateCredentials($conn, $username, $email, $excludeUserId = nu
     return $errors;
 }
 
+function awardAchievement(mysqli $conn, int $userId, string $code): void {
+    $stmt = $conn->prepare("SELECT id FROM ACHIEVEMENTS WHERE code = ?");
+    $stmt->bind_param("s", $code);
+    $stmt->execute();
+    $ach = $stmt->get_result()->fetch_assoc();
+    if (!$ach) {
+        return; // achievement not defined
+    }
+    $aid = $ach['id'];
+    $stmt = $conn->prepare("INSERT IGNORE INTO USER_ACHIEVEMENTS (user_id, achievement_id) VALUES (?, ?)");
+    $stmt->bind_param("ii", $userId, $aid);
+    $stmt->execute();
+}
+
 try {
     $connection = new AMQPStreamConnection('100.87.203.113', 5672, 'kac63', 'Linklinkm1!');
     echo " [*] Connected to RabbitMQ at 100.87.203.113\n";
@@ -58,12 +72,14 @@ $callback = function ($msg) use ($channel, $conn) {
     try {
         $payload = json_decode($msg->body, true);
         $response = ['status' => 'error', 'message' => 'Unknown action'];
-        echo " [x] Processing: " . ($payload['type'] ?? 'unknown') . "\n";
+        $payload['type'] = strtolower(trim($payload['type'] ?? ''));
+        echo " [x] Processing: " . ($payload['type'] ?: 'unknown') . "\n";
 
-        switch ($payload['type'] ?? '') {
+
+        switch ($payload['type']) {
             case 'login':
                 $credential = validateEmailOrUsername($payload['username']);
-                $query = "SELECT id, username, email, password FROM USERS WHERE {$credential['field']} = ?";
+                $query = "SELECT id, username, email, password, role FROM USERS WHERE {$credential['field']} = ?";
                 $stmt = $conn->prepare($query);
                 $stmt->bind_param("s", $credential['value']);
                 $stmt->execute();
@@ -77,7 +93,8 @@ $callback = function ($msg) use ($channel, $conn) {
                             'user' => [
                                 'id' => $user['id'],
                                 'username' => $user['username'],
-                                'email' => $user['email']
+                                'email' => $user['email'],
+                                'role' => $user['role'] ?? 'owner'
                             ]
                         ];
                         echo " [+] Login success for user: {$user['username']}\\n";
@@ -111,7 +128,8 @@ $callback = function ($msg) use ($channel, $conn) {
                         'user' => [
                             'id' => $stmt->insert_id,
                             'username' => $payload['username'],
-                            'email' => $payload['email']
+                            'email' => $payload['email'],
+                            'role' => 'owner'
                         ]
                     ];
                     echo " [+] Registered user: {$payload['username']}\\n";
@@ -152,13 +170,19 @@ $callback = function ($msg) use ($channel, $conn) {
                 $stmt->bind_param($types, ...$params);
 
                 if ($stmt->execute()) {
+                    $roleStmt = $conn->prepare("SELECT role FROM USERS WHERE id = ?");
+                    $roleStmt->bind_param("i", $payload['user_id']);
+                    $roleStmt->execute();
+                    $roleRes = $roleStmt->get_result()->fetch_assoc();
+                    $roleStmt->close();
                     $response = [
                         'status' => 'success',
                         'message' => 'Profile updated',
                         'user' => [
                             'id' => $payload['user_id'],
                             'username' => $payload['username'],
-                            'email' => $payload['email']
+                            'email' => $payload['email'],
+                            'role' => $roleRes['role'] ?? 'owner'
                         ]
                     ];
                     echo " [+] Updated profile for user ID: {$payload['user_id']}\\n";
@@ -220,6 +244,18 @@ $callback = function ($msg) use ($channel, $conn) {
                             $dogs = $res->fetch_all(MYSQLI_ASSOC);
                             $response = ['status' => 'success', 'dogs' => $dogs];
                             break;
+
+                        case 'get_dog':
+                            $stmt = $conn->prepare("SELECT * FROM DOGS WHERE id = ?");
+                            $stmt->bind_param("i", $payload['dog_id']);
+                            $stmt->execute();
+                            $dog = $stmt->get_result()->fetch_assoc();
+                            if ($dog) {
+                                $response = ['status' => 'success', 'dog' => $dog];
+                            } else {
+                                $response['message'] = 'Dog not found';
+                            }
+                            break;
             
                         case 'add_task':
                             $stmt = $conn->prepare("INSERT INTO DOG_TASKS (dog_id, user_id, title, description, due_date) VALUES (?, ?, ?, ?, ?)");
@@ -241,11 +277,25 @@ $callback = function ($msg) use ($channel, $conn) {
                             $response = ['status' => 'success', 'tasks' => $tasks];
                             break;
             
-                        case 'toggle_task':
+                case 'toggle_task':
+                            $stmt = $conn->prepare("SELECT completed, user_id FROM DOG_TASKS WHERE id = ?");
+                            $stmt->bind_param("i", $payload['task_id']);
+                            $stmt->execute();
+                            $row = $stmt->get_result()->fetch_assoc();
+                            $completed = (int)($row['completed'] ?? 0);
+                            $userForPoints = (int)($row['user_id'] ?? 0);
+
                             $stmt = $conn->prepare("UPDATE DOG_TASKS SET completed = NOT completed WHERE id = ?");
                             $stmt->bind_param("i", $payload['task_id']);
                             $stmt->execute();
                             $response = ['status' => 'success'];
+
+                            if ($completed === 0 && $userForPoints) {
+                                $stmt = $conn->prepare("INSERT INTO USER_POINTS (user_id, points) VALUES (?, 10) ON DUPLICATE KEY UPDATE points = points + 10");
+                                $stmt->bind_param("i", $userForPoints);
+                                $stmt->execute();
+                                awardAchievement($conn, $userForPoints, 'first_task_complete');
+                            }
                             break;
             case 'logout':
                 if (!empty($payload['user_id'])) {
@@ -429,9 +479,246 @@ $callback = function ($msg) use ($channel, $conn) {
                 }
                 break;
 
+                case 'add_care_log':
+                    $stmt = $conn->prepare("INSERT INTO CARE_LOGS (dog_id, user_id, note) VALUES (?, ?, ?)");
+                    $stmt->bind_param("iis", $payload['dog_id'], $payload['user_id'], $payload['note']);
+                    if ($stmt->execute()) {
+                        $response = ['status' => 'success', 'message' => 'Care log added'];
+                        $stmt = $conn->prepare("INSERT INTO USER_POINTS (user_id, points) VALUES (?, 5) ON DUPLICATE KEY UPDATE points = points + 5");
+                        $stmt->bind_param("i", $payload['user_id']);
+                        $stmt->execute();
+                        awardAchievement($conn, $payload['user_id'], 'first_care_log');
+                    } else {
+                        $response['message'] = 'Failed to add care log: ' . $conn->error;
+                    }
+                    break;
+
+                case 'get_care_logs':
+                    $stmt = $conn->prepare("SELECT * FROM CARE_LOGS WHERE dog_id = ? ORDER BY created_at DESC");
+                    $stmt->bind_param("i", $payload['dog_id']);
+                    $stmt->execute();
+                    $careLogs = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                    $response = ['status' => 'success', 'logs' => $careLogs];
+                    break;
+
+                case 'schedule_medication':
+                    $stmt = $conn->prepare("INSERT INTO MEDICATION_SCHEDULES (dog_id, user_id, medication, dosage, schedule_time, notes) VALUES (?, ?, ?, ?, ?, ?)");
+                    $stmt->bind_param("iissss", $payload['dog_id'], $payload['user_id'], $payload['medication'], $payload['dosage'], $payload['schedule_time'], $payload['notes']);
+                    if ($stmt->execute()) {
+                        $response = ['status' => 'success', 'message' => 'Medication scheduled'];
+                        $stmt = $conn->prepare("INSERT INTO USER_POINTS (user_id, points) VALUES (?, 5) ON DUPLICATE KEY UPDATE points = points + 5");
+                        $stmt->bind_param("i", $payload['user_id']);
+                        $stmt->execute();
+                        awardAchievement($conn, $payload['user_id'], 'first_med_schedule');
+                    } else {
+                        $response['message'] = 'Failed to schedule medication: ' . $conn->error;
+                    }
+                    break;
+
+                case 'complete_medication':
+                    $stmt = $conn->prepare("UPDATE MEDICATION_SCHEDULES SET completed = 1 WHERE id = ?");
+                    $stmt->bind_param("i", $payload['med_id']);
+                    $stmt->execute();
+                    $response = ['status' => 'success'];
+                    if ($stmt->affected_rows > 0) {
+                        $stmt = $conn->prepare("SELECT user_id FROM MEDICATION_SCHEDULES WHERE id = ?");
+                        $stmt->bind_param("i", $payload['med_id']);
+                        $stmt->execute();
+                        $uid = $stmt->get_result()->fetch_assoc()['user_id'] ?? 0;
+                        if ($uid) {
+                            $stmt = $conn->prepare("INSERT INTO USER_POINTS (user_id, points) VALUES (?, 5) ON DUPLICATE KEY UPDATE points = points + 5");
+                            $stmt->bind_param("i", $uid);
+                            $stmt->execute();
+                        }
+                    }
+                    break;
+
+                case 'get_medications':
+                    $stmt = $conn->prepare("SELECT * FROM MEDICATION_SCHEDULES WHERE dog_id = ? ORDER BY schedule_time");
+                    $stmt->bind_param("i", $payload['dog_id']);
+                    $stmt->execute();
+                    $meds = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                    $response = ['status' => 'success', 'medications' => $meds];
+                    break;
+
+                case 'add_behavior':
+                    $stmt = $conn->prepare("INSERT INTO BEHAVIOR_LOGS (dog_id, user_id, behavior, notes) VALUES (?, ?, ?, ?)");
+                    $stmt->bind_param("iiss", $payload['dog_id'], $payload['user_id'], $payload['behavior'], $payload['notes']);
+                    if ($stmt->execute()) {
+                        $response = ['status' => 'success', 'message' => 'Behavior entry added'];
+                        $stmt = $conn->prepare("INSERT INTO USER_POINTS (user_id, points) VALUES (?, 5) ON DUPLICATE KEY UPDATE points = points + 5");
+                        $stmt->bind_param("i", $payload['user_id']);
+                        $stmt->execute();
+                        awardAchievement($conn, $payload['user_id'], 'first_behavior_log');
+                    } else {
+                        $response['message'] = 'Failed to add behavior entry: ' . $conn->error;
+                    }
+                    break;
+
+                case 'get_behaviors':
+                    $stmt = $conn->prepare("SELECT * FROM BEHAVIOR_LOGS WHERE dog_id = ? ORDER BY created_at DESC");
+                    $stmt->bind_param("i", $payload['dog_id']);
+                    $stmt->execute();
+                    $behaviors = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                    $response = ['status' => 'success', 'behaviors' => $behaviors];
+                    break;
+
+                case 'get_points':
+                    $stmt = $conn->prepare("SELECT points FROM USER_POINTS WHERE user_id = ?");
+                    $stmt->bind_param("i", $payload['user_id']);
+                    $stmt->execute();
+                    $points = $stmt->get_result()->fetch_assoc()['points'] ?? 0;
+                    $response = ['status' => 'success', 'points' => (int)$points];
+                    break;
+
+                case 'get_achievements':
+                    $stmt = $conn->prepare("SELECT A.code, A.name, A.description, A.badge_img, UA.earned_at FROM USER_ACHIEVEMENTS UA JOIN ACHIEVEMENTS A ON UA.achievement_id = A.id WHERE UA.user_id = ?");
+                    $stmt->bind_param("i", $payload['user_id']);
+                    $stmt->execute();
+                    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                    $response = ['status' => 'success', 'achievements' => $rows];
+                    break;
+
+                    case 'add_meal':
+                        $stmt = $conn->prepare("INSERT INTO MEAL_TRACKING (dog_id, user_id, meal_type, amount, notes) VALUES (?, ?, ?, ?, ?)");
+                        $stmt->bind_param("iisss", $payload['dog_id'], $payload['user_id'], $payload['meal_type'], $payload['amount'], $payload['notes']);
+                        if ($stmt->execute()) {
+                            $response = ['status' => 'success', 'message' => 'Meal entry added'];
+                            // Award points for meal tracking
+                            $stmt = $conn->prepare("INSERT INTO USER_POINTS (user_id, points) VALUES (?, 5) ON DUPLICATE KEY UPDATE points = points + 5");
+                            $stmt->bind_param("i", $payload['user_id']);
+                            $stmt->execute();
+                            awardAchievement($conn, $payload['user_id'], 'first_meal_log');
+                        } else {
+                            $response = ['status' => 'error', 'message' => 'Failed to add meal entry'];
+                        }
+                        break;
+                    
+                    case 'get_meals':
+                        $stmt = $conn->prepare("SELECT * FROM MEAL_TRACKING WHERE dog_id = ? ORDER BY timestamp DESC");
+                        $stmt->bind_param("i", $payload['dog_id']);
+                        $stmt->execute();
+                        $meals = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                        $response = ['status' => 'success', 'entries' => $meals];
+                        break;
+
+                        case 'delete_dog':
+                            if (empty($payload['dog_id']) || empty($payload['user_id'])) {
+                                $response = ['status' => 'error', 'message' => 'dog_id and user_id are required'];
+                                break;
+                            }
+                        
+                            try {
+                                $conn->begin_transaction();
+                                
+                                // Delete related records
+                                $tables = [
+                                    'DOG_TASKS',
+                                    'WATER_TRACKING',
+                                    'CARE_LOGS',
+                                    'MEDICATION_SCHEDULES',
+                                    'BEHAVIOR_LOGS',
+                                    'MEAL_TRACKING'
+                                ];
+                                
+                                foreach ($tables as $table) {
+                                    $stmt = $conn->prepare("DELETE FROM $table WHERE dog_id = ?");
+                                    $stmt->bind_param("i", $payload['dog_id']);
+                                    $stmt->execute();
+                                    $stmt->close();
+                                }
+                                
+                                // Delete the dog
+                                $stmt = $conn->prepare("DELETE FROM DOGS WHERE id = ? AND owner_id = ?");
+                                $stmt->bind_param("ii", $payload['dog_id'], $payload['user_id']);
+                                $stmt->execute();
+                                
+                                if ($stmt->affected_rows > 0) {
+                                    $conn->commit();
+                                    $response = ['status' => 'success', 'message' => 'Dog deleted successfully'];
+                                } else {
+                                    $conn->rollback();
+                                    $response = ['status' => 'error', 'message' => 'Dog not found or not owned by user'];
+                                }
+                                
+                                $stmt->close();
+                            } catch (Exception $e) {
+                                $conn->rollback();
+                                $response = ['status' => 'error', 'message' => $e->getMessage()];
+                            }
+                            break;
+
+                            case 'delete_meal':
+                                $stmt = $conn->prepare("DELETE FROM MEAL_TRACKING WHERE id = ? AND user_id = ?");
+                                $stmt->bind_param("ii", $payload['meal_id'], $payload['user_id']);
+                                if ($stmt->execute()) {
+                                    $response = ['status' => 'success', 'message' => 'Meal deleted'];
+                                } else {
+                                    $response = ['status' => 'error', 'message' => 'Failed to delete meal'];
+                                }
+                                break;
+                            case 'delete_water':
+                                $stmt = $conn->prepare("DELETE FROM WATER_TRACKING WHERE id = ? AND user_id = ?");
+                                $stmt->bind_param("ii", $payload['water_id'], $payload['user_id']);
+                                if ($stmt->execute()) {
+                                    $response = ['status' => 'success', 'message' => 'Water entry deleted'];
+                                } else {
+                                    $response = ['status' => 'error', 'message' => 'Failed to delete water entry'];
+                                }
+                                break;
+                            case 'delete_task':
+                                if (empty($payload['task_id'])) {
+                                    $response = ['error' => 'task_id is required'];
+                                } else {
+                                    $stmt = $conn->prepare("DELETE FROM DOG_TASKS WHERE id = ?");
+                                    $stmt->bind_param("i", $payload['task_id']);
+                                    if ($stmt->execute()) {
+                                        $response = ['status' => 'success', 'message' => 'Task deleted'];
+                                    } else {
+                                        $response = ['error' => 'Failed to delete task'];
+                                    }
+                                }
+                                break;
+                        case 'delete_medication':
+                            if (empty($payload['med_id'])) {
+                                $response['message'] = 'Medication ID is required';
+                                break;
+                            }
+                            
+                            $stmt = $conn->prepare("DELETE FROM MEDICATION_SCHEDULES WHERE id = ? AND user_id = ?");
+                            $stmt->bind_param("ii", $payload['med_id'], $payload['user_id']);
+                            if ($stmt->execute()) {
+                                $response = ['status' => 'success', 'message' => 'Medication deleted'];
+                            } else {
+                                $response['message'] = 'Failed to delete medication';
+                            }
+                            break;
+                        case 'delete_care_log':
+                            if (empty($payload['log_id'])) {
+                                throw new InvalidArgumentException('log_id is required');
+                            }
+                            
+                            $stmt = $conn->prepare("DELETE FROM CARE_LOGS WHERE id = ? AND user_id = ?");
+                            $stmt->bind_param("ii", $payload['log_id'], $payload['user_id']);
+                            if ($stmt->execute()) {
+                                $response = ['status' => 'success', 'message' => 'Care log deleted'];
+                            } else {
+                                $response = ['status' => 'error', 'message' => 'Failed to delete care log'];
+                            }
+                            break;
+                            case 'delete_behavior':
+                                $stmt = $conn->prepare("DELETE FROM BEHAVIOR_LOGS WHERE id = ? AND user_id = ?");
+                                $stmt->bind_param("ii", $payload['behavior_id'], $payload['user_id']);
+                                if ($stmt->execute()) {
+                                    $response = ['status' => 'success', 'message' => 'Behavior entry deleted'];
+                                } else {
+                                    $response = ['status' => 'error', 'message' => 'Failed to delete behavior entry'];
+                                }
+                                break;
             default:
                 $response['message'] = "Unsupported action type";
-                echo " [?] Unknown message type\\n";
+                $unknown = $payload['type'] ?? 'unknown';
+                echo " [?] Unknown message type: $unknown\\n";
                 break;
         }
 
