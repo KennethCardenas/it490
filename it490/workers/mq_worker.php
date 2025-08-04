@@ -326,6 +326,158 @@ $callback = function ($msg) use ($channel, $conn) {
                     $waterEntries = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                     $response = ['status' => 'success', 'entries' => $waterEntries];
                     break;
+		
+		case 'lost_dogs_create':
+        	    $stmt = $conn->prepare(
+            	    "INSERT INTO lost_dogs
+               	       (dog_id,dog_name,description,last_lat,last_lng,alert_radius,photo_url,reported_by)
+             	    VALUES(?,?,?,?,?,?,?,?)"
+        	    );
+        	    $stmt->bind_param(
+            	   	'issddisi',
+            	    	$payload['dog_id'],
+            	    	$payload['dog_name'],
+            	    	$payload['description'],
+            	    	$payload['last_lat'],
+            	    	$payload['last_lng'],
+            	    	$payload['alert_radius'],
+             	    	$payload['photo_url'],
+            	    	$payload['user_id']
+        	    );
+        	    if ($stmt->execute()){
+        	        $response = ['status'=>'success','message'=>'Lost dog reported'];
+			echo "Lost dog post added for {$payload['dog_id']}\n";
+		    } else {
+			$response['message'] = 'Failed to post lost dog report: ' . $conn->error;
+			echo "Report failed to post\n";
+		    }
+        	    break;
+
+    		case 'lost_dogs_list':
+        	    $res = $conn->query("SELECT * FROM lost_dogs ORDER BY reported_at DESC");
+        	    $response = ['status'=>'success','alerts'=>$res->fetch_all(MYSQLI_ASSOC)];
+        	    break;
+
+    		case 'lost_dogs_update':
+        	    $stmt = $conn->prepare(
+            		"UPDATE lost_dogs SET status = ? WHERE id = ?"
+        	    );
+        	    $stmt->bind_param('si',$payload['status'],$payload['id']);
+        	    if ($stmt->execute()){
+        	        $response = ['status'=>'success','message'=>'Alert updated'];
+			echo "Alert updated for {$payload['id']} to {$payload['status']}\n";
+		    } else {
+			$response['message'] = 'Status not updated: ' . $conn->error;
+			echo "Lost status not updated\n";
+        	    }
+        	    break;
+
+		case 'playdates_list':
+    		   $allowed = ['age_range','size','energy_level','temperament','play_style','gender_pref','location'];
+    		   $clauses = $params = [];
+    		   $types = '';
+
+    		   foreach ($allowed as $f) {
+        		if (!empty($payload[$f])) {
+            		    if ($f === 'location') {
+                		$clauses[] = "LOWER(location) LIKE ?";
+                		$params[]  = '%' .strtolower($payload[$f]) . '%';
+            		    } else {
+                		$clauses[] = "$f = ?";
+                		$params[]  = $payload[$f];
+            		    }
+            		    $types .= 's';
+        		}
+    		   }
+
+    		   $sql = "SELECT id,title,description,scheduled_at,location,created_by,created_at FROM PLAYDATES";
+    		   if ($clauses) {
+        	       $sql .= ' WHERE ' . implode(' AND ', $clauses);
+    		   }
+    		   $sql .= ' ORDER BY scheduled_at DESC';
+
+    		   $stmt = $conn->prepare($sql);
+    		   if ($clauses) {
+        	   $stmt->bind_param($types, ...$params);
+    		   }
+    		   if ($stmt->execute()){
+    		       $response = ['status'=>'success', 'playdates'=>$stmt->get_result()->fetch_all(MYSQLI_ASSOC)];
+		       echo "Playdate list displayed\n";
+		   } else {
+		       $response['message'] = 'List did not fetch: ' . $conn->error;
+		       echo "Playdates were not filtered\n";
+    		   }
+    		   break;
+
+		case 'playdates_create':
+    		    $stmt = $conn->prepare("INSERT INTO PLAYDATES (created_by, title, description, scheduled_at, location, age_range, size, energy_level, temperament, play_style, gender_pref) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    		    $stmt->bind_param("issssssssss", 
+    		        $payload['user_id'],
+    		        $payload['title'],
+    		        $payload['description'],
+    		        $payload['scheduled_at'],
+    		        $payload['location'],
+    		        $payload['age_range'],
+    		        $payload['size'],
+    		        $payload['energy_level'],
+    		        $payload['temperament'],
+    		        $payload['play_style'],
+    		        $payload['gender_pref']
+    		    );
+    		    if ($stmt->execute()) {
+    		        $response = ['status' => 'success', 'message' => 'Playdate created'];
+    		        echo " [+] Playdate created for user {$payload['user_id']}\n";
+    		    } else {
+    		        $response = ['status' => 'error', 'message' => 'Failed to create playdate: ' . $conn->error];
+    		        echo " [-] Playdate creation failed\n";
+    		    }
+    		    break;
+
+            case 'playdate_request':
+                $stmt = $conn->prepare(
+                    "INSERT INTO PLAYDATE_REQUESTS (playdate_id, requester_id, recipient_id, dog_size_match, location_preference, custom_message) VALUES (?, ?, ?, ?, ?, ?)"
+                );
+                $stmt->bind_param(
+                    "iiisss",
+                    $payload['playdate_id'],
+                    $payload['user_id'],
+                    $payload['recipient_id'],
+                    $payload['dog_size_match'],
+                    $payload['location_preference'],
+                    $payload['custom_message']
+                );
+                if ($stmt->execute()) {
+                    $response = ['status' => 'success', 'message' => 'Playdate request sent'];
+                    echo " [+] Playdate request sent by user {$payload['user_id']}\n";
+                } else {
+                    $response = ['status' => 'error', 'message' => 'Failed to send playdate request: ' . $conn->error];
+                    echo " [-] Playdate request failed\n";
+                }
+                break;
+
+            case 'playdate_requests_list':
+                $stmt = $conn->prepare(
+                    "SELECT pr.*, p.title FROM PLAYDATE_REQUESTS pr JOIN PLAYDATES p ON pr.playdate_id = p.id WHERE pr.recipient_id = ? ORDER BY pr.id DESC"
+                );
+                $stmt->bind_param("i", $payload['user_id']);
+                if ($stmt->execute()) {
+                    $response = ['status' => 'success', 'requests' => $stmt->get_result()->fetch_all(MYSQLI_ASSOC)];
+                } else {
+                    $response = ['status' => 'error', 'message' => 'Failed to fetch requests: ' . $conn->error];
+                }
+                break;
+
+            case 'playdate_requests_update':
+                $stmt = $conn->prepare("UPDATE PLAYDATE_REQUESTS SET status = ? WHERE id = ?");
+                $stmt->bind_param("si", $payload['status'], $payload['id']);
+                if ($stmt->execute()) {
+                    $response = ['status' => 'success', 'message' => 'Request updated'];
+                    echo " [+] Playdate request {$payload['id']} updated to {$payload['status']}\n";
+                } else {
+                    $response = ['status' => 'error', 'message' => 'Failed to update request: ' . $conn->error];
+                    echo " [-] Playdate request update failed\n";
+                }
+                break;
 
                 case 'add_care_log':
                     $stmt = $conn->prepare("INSERT INTO CARE_LOGS (dog_id, user_id, note) VALUES (?, ?, ?)");

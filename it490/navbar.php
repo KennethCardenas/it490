@@ -27,6 +27,22 @@
                     <i class="fas fa-star"></i>
                     <span>Points</span>
                 </a>
+                <a href="/it490/pages/invite.php" class="nav-link">
+                    <i class="fas fa-envelope-open-text"></i>
+                    <span>Invites</span>
+                </a>
+                <a href="/it490/pages/playdates.php" class="nav-link">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Playdates</span>
+                </a>
+                <a href="/it490/pages/playdate_request.php" class="nav-link">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>Playdate Requests</span>
+                </a>
+                <a href="/it490/pages/lost_dogs.php" class="nav-link">
+                    <i class="fas fa-dog"></i>
+                    <span>Lost Dogs</span>
+                </a>
                 <?php if (isAdmin()): ?>
                     <a href="/it490/pages/admin.php" class="nav-link">
                         <i class="fas fa-shield-alt"></i>
@@ -61,4 +77,5 @@
         navbarMenu.classList.toggle('active');
     });
 </script>
+
 
