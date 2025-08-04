@@ -23,12 +23,17 @@ $message = '';
 // handle create submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
+        $scheduled = $_POST['scheduled_at'] ?? '';
+        if ($scheduled) {
+            $scheduled = str_replace('T', ' ', $scheduled);
+        }
+
         $resp = sendMessage([
             'type' => 'playdates_create',
             'user_id' => $user['id'],
             'title' => $_POST['title'] ?? '',
             'description' => $_POST['description'] ?? '',
-            'scheduled_at' => $_POST['scheduled_at'] ?? '',
+            'scheduled_at' => $scheduled,
             'location' => $_POST['location'] ?? '',
             'age_range' => $_POST['age_range'] ?? '',
             'size' => $_POST['size'] ?? '',
