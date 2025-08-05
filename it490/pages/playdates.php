@@ -98,7 +98,6 @@ include_once __DIR__ . '/../header.php';
       <p><?= htmlspecialchars($p['description']) ?></p>
       <form method="POST" action="../send_user_request.php?type=playdate_request" class="form-inline">
         <input type="hidden" name="playdate_id" value="<?= htmlspecialchars($p['id']) ?>">
-        <input type="hidden" name="recipient_id" value="<?= htmlspecialchars($p['created_by']) ?>">
         <input type="hidden" name="dog_size_match" value="Medium">
         <input name="location_preference" placeholder="Location" required class="input">
         <input name="custom_message" placeholder="Message" class="input">
